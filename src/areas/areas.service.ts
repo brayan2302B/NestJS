@@ -1,26 +1,38 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Area } from './entities/area.entity';
 import { CreateAreaDto } from './dto/create-area.dto';
 import { UpdateAreaDto } from './dto/update-area.dto';
 
 @Injectable()
 export class AreasService {
+  constructor(
+    @InjectRepository(Area)
+    private readonly areaRepository: Repository<Area>,
+  ) {}
+
   create(createAreaDto: CreateAreaDto) {
-    return 'This action adds a new area';
+    const area = this.areaRepository.create(createAreaDto);
+    return this.areaRepository.save(area);
   }
 
   findAll() {
-    return `This action returns all areas`;
+    return this.areaRepository.find({ relations: { rol: true } });
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} area`;
+    return this.areaRepository.findOne({
+      where: { id_area: id },
+      relations: { rol: true },
+    });
   }
 
   update(id: number, updateAreaDto: UpdateAreaDto) {
-    return `This action updates a #${id} area`;
+    return this.areaRepository.update(id, updateAreaDto);
   }
 
   remove(id: number) {
-    return `This action removes a #${id} area`;
+    return this.areaRepository.delete(id);
   }
 }
