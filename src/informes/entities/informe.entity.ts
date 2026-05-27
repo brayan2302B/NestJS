@@ -20,4 +20,4 @@ export class Informe {
   version!: Version;
 }
 
-export class Informe {}
+

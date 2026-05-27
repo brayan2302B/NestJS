@@ -16,5 +16,3 @@ export class CreateNovedadDto {
   @IsInt()
   fk_version!: number;
 }
-
-export class CreateNovedadeDto {}

@@ -16,4 +16,3 @@ export class CreateVersionDto {
   @MaxLength(50)
   estado?: string;
 }
-export class CreateVersioneDto {}

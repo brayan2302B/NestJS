@@ -1,20 +1,18 @@
 import { IsDateString, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
-export class CreateInformeDto {
-  @IsString()
-  @MaxLength(150)
-  titulo!: string;
+export class CreateVersionDto {
+  @IsInt()
+  numero_version!: number;
 
   @IsDateString()
-  fecha_informe!: string;
+  fecha_version!: string;
+
+  @IsString()
+  @MaxLength(255)
+  descripcion!: string;
 
   @IsString()
   @IsOptional()
   @MaxLength(50)
   estado?: string;
-
-  @IsInt()
-  fk_version!: number;
 }
-
-
