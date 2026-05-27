@@ -1,26 +1,34 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Obligacione } from './entities/obligacione.entity';
 import { CreateObligacioneDto } from './dto/create-obligacione.dto';
-import { UpdateObligacioneDto } from './dto/update-obligacione.dto';
 
 @Injectable()
 export class ObligacionesService {
+  constructor(
+    @InjectRepository(Obligacione)
+    private obligacionesRepository: Repository<Obligacione>,
+  ) {}
+
   create(createObligacioneDto: CreateObligacioneDto) {
-    return 'This action adds a new obligacione';
+    const obligacion = this.obligacionesRepository.create(createObligacioneDto);
+    return this.obligacionesRepository.save(obligacion);
   }
 
   findAll() {
-    return `This action returns all obligaciones`;
+    return this.obligacionesRepository.find();
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} obligacione`;
+    return this.obligacionesRepository.findOneBy({ id_obligaciones: id });
   }
 
-  update(id: number, updateObligacioneDto: UpdateObligacioneDto) {
-    return `This action updates a #${id} obligacione`;
+  update(id: number, updateObligacioneDto: Partial<CreateObligacioneDto>) {
+    return this.obligacionesRepository.update(id, updateObligacioneDto);
   }
 
   remove(id: number) {
-    return `This action removes a #${id} obligacione`;
+    return this.obligacionesRepository.delete(id);
   }
 }
