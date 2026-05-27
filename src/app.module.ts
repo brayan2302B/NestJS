@@ -1,8 +1,12 @@
 import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PersonasModule } from './personas/personas.module';
 import { AreasModule } from './areas/areas.module';
 import { RolModule } from './rol/rol.module';
+import { ContratosModule } from './contratos/contratos.module';
+import { ObligacionesModule } from './obligaciones/obligaciones.module';
 
 @Module({
   imports: [
@@ -19,6 +23,10 @@ import { RolModule } from './rol/rol.module';
     PersonasModule,
     AreasModule,
     RolModule,
+    ContratosModule,
+    ObligacionesModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
