@@ -1,26 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { InformeGf } from './entities/informe-gf.entity';
 import { CreateInformeGfDto } from './dto/create-informe-gf.dto';
 import { UpdateInformeGfDto } from './dto/update-informe-gf.dto';
 
 @Injectable()
 export class InformeGfService {
+
+  constructor(
+    @InjectRepository(InformeGf)
+    private readonly informeGfRepository: Repository<InformeGf>,
+  ) {}
+
   create(createInformeGfDto: CreateInformeGfDto) {
-    return 'This action adds a new informeGf';
+    const informe = this.informeGfRepository.create(createInformeGfDto);
+    return this.informeGfRepository.save(informe);
   }
 
   findAll() {
-    return `This action returns all informeGf`;
+    return this.informeGfRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} informeGf`;
+  async findOne(id: number) {
+    const informe = await this.informeGfRepository.findOneBy({ id_gf: id });
+    if (!informe) throw new NotFoundException(`InformeGf #${id} no encontrado`);
+    return informe;
   }
 
-  update(id: number, updateInformeGfDto: UpdateInformeGfDto) {
-    return `This action updates a #${id} informeGf`;
+  async update(id: number, updateInformeGfDto: UpdateInformeGfDto) {
+    await this.findOne(id);
+    await this.informeGfRepository.update(id, updateInformeGfDto);
+    return this.findOne(id);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} informeGf`;
+  async remove(id: number) {
+    await this.findOne(id);
+    return this.informeGfRepository.delete(id);
   }
 }
