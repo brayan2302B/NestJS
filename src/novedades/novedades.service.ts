@@ -1,26 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { CreateNovedadeDto } from './dto/create-novedade.dto';
-import { UpdateNovedadeDto } from './dto/update-novedade.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Novedad } from './entities/novedad.entity';
+import { CreateNovedadDto } from './dto/create-novedad.dto';
+import { UpdateNovedadDto } from './dto/update-novedad.dto';
 
 @Injectable()
 export class NovedadesService {
-  create(createNovedadeDto: CreateNovedadeDto) {
-    return 'This action adds a new novedade';
-  }
+  constructor(
+    @InjectRepository(Novedad)
+    private readonly novedadRepository: Repository<Novedad>,
+  ) {}
 
-  findAll() {
-    return `This action returns all novedades`;
+  create(createNovedadDto: CreateNovedadDto) {
+    const novedad = this.novedadRepository.create(createNovedadDto);
+    return this.novedadRepository.save(novedad);
   }
-
-  findOne(id: number) {
-    return `This action returns a #${id} novedade`;
-  }
-
-  update(id: number, updateNovedadeDto: UpdateNovedadeDto) {
-    return `This action updates a #${id} novedade`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} novedade`;
-  }
+  findAll() { return this.novedadRepository.find({ relations: { version: true } }); }
+  findOne(id: number) { return this.novedadRepository.findOne({ where: { id_novedad: id }, relations: { version: true } }); }
+  update(id: number, updateNovedadDto: UpdateNovedadDto) { return this.novedadRepository.update(id, updateNovedadDto); }
+  remove(id: number) { return this.novedadRepository.delete(id); }
 }
