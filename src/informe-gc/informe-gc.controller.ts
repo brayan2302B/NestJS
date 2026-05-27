@@ -5,6 +5,7 @@ import { UpdateInformeGcDto } from './dto/update-informe-gc.dto';
 
 @Controller('informe-gc')
 export class InformeGcController {
+
   constructor(private readonly informeGcService: InformeGcService) {}
 
   @Post()
