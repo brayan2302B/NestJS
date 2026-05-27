@@ -2,36 +2,49 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PersonasModule } from './personas/personas.module';
 import { AreasModule } from './areas/areas.module';
 import { RolModule } from './rol/rol.module';
 import { ContratosModule } from './contratos/contratos.module';
 import { ObligacionesModule } from './obligaciones/obligaciones.module';
+import { VersionesModule } from './versiones/versiones.module';
+import { InformesModule } from './informes/informes.module';
+import { NovedadesModule } from './novedades/novedades.module';
+import { InformeGcModule } from './informe-gc/informe-gc.module';
+import { InformeGfModule } from './informe-gf/informe-gf.module';
+import { ActividadesModule } from './actividades/actividades.module';
+import { EvidenciasModule } from './evidencias/evidencias.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'postgres',
-      port: 5433,
-      username: 'postgres',
-      password: 'Clave123',
-      database: 'proyecto_formativo',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
+    ConfigModule.forRoot({ isGlobal: true }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get('DB_HOST'),
+        port: parseInt(config.get('DB_PORT')),
+        username: config.get('DB_USERNAME'),
+        password: config.get('DB_PASSWORD'),
+        database: config.get('DB_NAME'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: true,
+      }),
+      inject: [ConfigService],
     }),
-    VersionesModule,
-    InformesModule,
-    NovedadesModule,
-  ],
     PersonasModule,
     AreasModule,
     RolModule,
     ContratosModule,
     ObligacionesModule,
+    VersionesModule,
+    InformesModule,
+    NovedadesModule,
+    InformeGcModule,
+    InformeGfModule,
+    ActividadesModule,
+    EvidenciasModule,
   ],
   controllers: [AppController],
   providers: [AppService],
