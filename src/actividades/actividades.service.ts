@@ -2,9 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Actividad } from './entities/actividad.entity';
-import { CreateActividadDto } from './dto/create-actividad.dto';
-import { UpdateActividadDto } from './dto/update-actividad.dto';
-
+import { CreateActividadDto } from './dto/create-actividade.dto';
+import { UpdateActividadDto } from './dto/update-actividade.dto';
 @Injectable()
 export class ActividadesService {
 

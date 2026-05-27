@@ -1,26 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Evidencia } from './entities/evidencia.entity';
 import { CreateEvidenciaDto } from './dto/create-evidencia.dto';
 import { UpdateEvidenciaDto } from './dto/update-evidencia.dto';
 
 @Injectable()
 export class EvidenciasService {
+
+  constructor(
+    @InjectRepository(Evidencia)
+    private readonly evidenciaRepository: Repository<Evidencia>,
+  ) {}
+
   create(createEvidenciaDto: CreateEvidenciaDto) {
-    return 'This action adds a new evidencia';
+    const evidencia = this.evidenciaRepository.create(createEvidenciaDto);
+    return this.evidenciaRepository.save(evidencia);
   }
 
   findAll() {
-    return `This action returns all evidencias`;
+    return this.evidenciaRepository.find();
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} evidencia`;
+  async findOne(id: number) {
+    const evidencia = await this.evidenciaRepository.findOneBy({ id_evidencia: id });
+    if (!evidencia) throw new NotFoundException(`Evidencia #${id} no encontrada`);
+    return evidencia;
   }
 
-  update(id: number, updateEvidenciaDto: UpdateEvidenciaDto) {
-    return `This action updates a #${id} evidencia`;
+  async update(id: number, updateEvidenciaDto: UpdateEvidenciaDto) {
+    await this.findOne(id);
+    await this.evidenciaRepository.update(id, updateEvidenciaDto);
+    return this.findOne(id);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} evidencia`;
+  async remove(id: number) {
+    await this.findOne(id);
+    return this.evidenciaRepository.delete(id);
   }
 }
