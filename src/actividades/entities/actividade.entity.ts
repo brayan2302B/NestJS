@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Evidencia } from '../../evidencias/entities/evidencia.entity';
+import { InformeGc } from '../../informe-gc/entities/informe-gc.entity';
 
 @Entity('actividades')
 export class Actividad {
@@ -28,7 +29,9 @@ export class Actividad {
   @Column({ type: 'int', nullable: true })
   fk_gc: number;
 
-  informeGc: any;
+  @ManyToOne(() => InformeGc, (informeGc) => informeGc.actividades, { nullable: true })
+  @JoinColumn({ name: 'fk_gc' })
+  informeGc: InformeGc;
 
   @OneToMany(() => Evidencia, (evidencia) => evidencia.actividad)
   evidencias: Evidencia[];
