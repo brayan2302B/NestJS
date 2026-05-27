@@ -1,5 +1,4 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { Actividad } from '../../actividades/entities/actividad.entity';
 
 @Entity('evidencias')
 export class Evidencia {
@@ -16,7 +15,8 @@ export class Evidencia {
   @Column({ type: 'varchar', length: 215 })
   fotografia: string;
 
-  @ManyToOne(() => Actividad, (actividad) => actividad.evidencias, { nullable: true })
-  @JoinColumn({ name: 'fk_actividades' })
-  actividad: Actividad;
+  @Column({ type: 'int', nullable: true })
+  fk_actividades: number;
+
+  actividad: any;
 }

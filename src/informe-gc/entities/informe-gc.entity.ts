@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { Actividad } from '../../actividades/entities/actividad.entity';
+import { Actividad } from '../../actividades/entities/actividade.entity';
 
 @Entity('informe_gc')
 export class InformeGc {
