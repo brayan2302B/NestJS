@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Contrato } from '../../contratos/entities/contrato.entity';
 
 @Entity('versiones')
 export class Version {
@@ -16,5 +17,9 @@ export class Version {
 
   @Column({ type: 'varchar', length: 50, default: 'activo' })
   estado!: string;
+
+  @ManyToOne(() => Contrato, (contrato) => contrato.versiones)
+  @JoinColumn({ name: 'fk_contrato' })
+  contrato!: Contrato;
 }
 export class Versione {}
