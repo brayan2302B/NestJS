@@ -1,6 +1,7 @@
-import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, OneToMany, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { Area } from '../../areas/entities/area.entity';
 import { Rol } from '../../rol/entities/rol.entity';
+import { Novedad } from '../../novedades/entities/novedad.entity';
 
 @Entity('personas')
 export class Persona {
@@ -26,4 +27,7 @@ export class Persona {
   @ManyToOne(() => Rol)
   @JoinColumn({ name: 'fk_rol' })
   rol!: Rol;
+
+  @OneToMany(() => Novedad, (novedad) => novedad.persona)
+  novedades!: Novedad[];
 }
