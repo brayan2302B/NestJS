@@ -1,5 +1,6 @@
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
 import { Version } from '../../versiones/entities/version.entity';
+import { Obligacione } from '../../obligaciones/entities/obligacione.entity';
 
 @Entity('informes')
 export class Informe {
@@ -18,4 +19,8 @@ export class Informe {
   @ManyToOne(() => Version)
   @JoinColumn({ name: 'fk_version' })
   version!: Version;
+
+  @ManyToOne(() => Obligacione, (obligacion) => obligacion.informes)
+  @JoinColumn({ name: 'fk_obligacion' })
+  obligacion!: Obligacione;
 }

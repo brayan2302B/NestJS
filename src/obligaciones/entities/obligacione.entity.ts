@@ -14,6 +14,6 @@ export class Obligacione {
   @JoinColumn({ name: 'fk_contrato' })
   contrato!: Contrato;
 
-  @OneToMany(() => Informe, (informe) => informe.obligaciones)
+  @OneToMany(() => Informe, (informe) => informe.obligacion)
   informes!: Informe[];
 }
