@@ -1,6 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
 import { Persona } from '../../personas/entities/persona.entity';
 import { Obligacione } from '../../obligaciones/entities/obligacione.entity';
+import { Version } from '../../versiones/entities/version.entity';
 
 @Entity('contratos')
 export class Contrato {
@@ -13,7 +14,7 @@ export class Contrato {
   @Column({ type: 'date' })
   fecha_fin!: Date;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: 'varchar', length: 50, default: 'activo' })
   estado!: string;
 
   @ManyToOne(() => Persona)
@@ -22,4 +23,7 @@ export class Contrato {
 
   @OneToMany(() => Obligacione, (obligacion) => obligacion.contrato)
   obligaciones!: Obligacione[];
+
+  @OneToMany(() => Version, (version) => version.contrato)
+  versiones!: Version[];
 }
