@@ -1,25 +1,62 @@
-import { IsNumber, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreatePersonaDto {
   @IsString()
-  @MaxLength(100)
-  nombre!: string;
+  @MaxLength(150)
+  nombre_completo!: string;
 
   @IsString()
-  @MaxLength(18)
-  telefono!: string;
-
-  @IsString()
-  @MaxLength(100)
-  correo!: string;
+  @IsIn(['CC', 'CE'])
+  tipo_documento!: string;
 
   @IsString()
   @MaxLength(20)
-  documento!: string;
+  numero_documento!: string;
 
-  @IsNumber()
-  fk_area!: number;
+  @IsEmail()
+  @MaxLength(150)
+  correo!: string;
 
-  @IsNumber()
-  fk_rol!: number;
+  @IsString()
+  @MinLength(6)
+  contrasena_hash!: string;
+
+  @IsOptional()
+  @IsInt()
+  id_rol?: number;
+
+  @IsOptional()
+  @IsInt()
+  id_area?: number;
+
+  @IsOptional()
+  @IsIn(['pendiente', 'activo', 'inactivo', 'rechazado'])
+  estado_cuenta?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  firma_digital_ruta?: string;
+
+  @IsOptional()
+  @IsObject()
+  preferencias_notificaciones?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsInt()
+  aprobado_por_id?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  motivo_rechazo?: string;
 }

@@ -12,12 +12,27 @@ export class InformesService {
     private readonly informeRepository: Repository<Informe>,
   ) {}
 
-  create(createInformeDto: CreateInformeDto) {
+  async create(createInformeDto: CreateInformeDto) {
     const informe = this.informeRepository.create(createInformeDto);
     return this.informeRepository.save(informe);
   }
-  findAll() { return this.informeRepository.find({ relations: { version: true } }); }
-  findOne(id: number) { return this.informeRepository.findOne({ where: { id_informe: id }, relations: { version: true } }); }
-  update(id: number, updateInformeDto: UpdateInformeDto) { return this.informeRepository.update(id, updateInformeDto); }
-  remove(id: number) { return this.informeRepository.delete(id); }
+
+  findAll() {
+    return this.informeRepository.find({ relations: { usuario: true, periodo: true } });
+  }
+
+  findOne(id: number) {
+    return this.informeRepository.findOne({
+      where: { id_informe: id },
+      relations: { usuario: true, periodo: true },
+    });
+  }
+
+  update(id: number, updateInformeDto: UpdateInformeDto) {
+    return this.informeRepository.update(id, updateInformeDto);
+  }
+
+  remove(id: number) {
+    return this.informeRepository.softDelete(id);
+  }
 }

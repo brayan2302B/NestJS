@@ -1,12 +1,14 @@
 import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateInformeGcDto {
-
-  @IsString()
-  @MaxLength(50)
-  version_gc: string;
+  @IsInt()
+  id_informe!: number;
 
   @IsInt()
+  id_contrato!: number;
+
+  @IsString()
+  @MaxLength(20)
   @IsOptional()
-  fk_informe?: number;
+  version_formato?: string;
 }

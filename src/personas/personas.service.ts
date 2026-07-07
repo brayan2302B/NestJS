@@ -23,7 +23,7 @@ export class PersonasService {
 
   findOne(id: number) {
     return this.personaRepository.findOne({
-      where: { id_persona: id },
+      where: { id_usuario: id },
       relations: { area: true, rol: true },
     });
   }
@@ -33,6 +33,6 @@ export class PersonasService {
   }
 
   remove(id: number) {
-    return this.personaRepository.delete(id);
+    return this.personaRepository.softDelete(id);
   }
 }
