@@ -16,6 +16,9 @@ export class InformesController {
   @Get(':id')
   findOne(@Param('id') id: string) { return this.informesService.findOne(+id); }
 
+  @Get(':id/pdf-gc')
+  getPdfGc(@Param('id') id: string) { return this.informesService.getDatosPdfGc(+id); }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateInformeDto: UpdateInformeDto) { return this.informesService.update(+id, updateInformeDto); }
 
