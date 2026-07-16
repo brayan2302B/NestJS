@@ -1,8 +1,7 @@
+import { Transform } from 'class-transformer';
 import {
   IsEmail,
   IsIn,
-  IsInt,
-  IsObject,
   IsOptional,
   IsString,
   MaxLength,
@@ -10,53 +9,33 @@ import {
 } from 'class-validator';
 
 export class CreatePersonaDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MaxLength(150)
-  nombre_completo!: string;
+  nombreCompleto!: string;
 
-  @IsString()
-  @IsIn(['CC', 'CE'])
-  tipo_documento!: string;
-
-  @IsString()
-  @MaxLength(20)
-  numero_documento!: string;
-
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
   @IsEmail()
   @MaxLength(150)
-  correo!: string;
+  email!: string;
 
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @IsString()
+  @IsIn(['CC', 'CE', 'TI'])
+  tipoDocumento!: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @MaxLength(20)
+  numeroDocumento!: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(6)
-  contrasena_hash!: string;
-
-  @IsOptional()
-  @IsInt()
-  id_rol?: number;
-
-  @IsOptional()
-  @IsInt()
-  id_area?: number;
-
-  @IsOptional()
-  @IsIn(['pendiente', 'activo', 'inactivo', 'rechazado'])
-  estado_cuenta?: string;
+  @MaxLength(255)
+  contrasena!: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(255)
-  firma_digital_ruta?: string;
-
-  @IsOptional()
-  @IsObject()
-  preferencias_notificaciones?: Record<string, unknown>;
-
-  @IsOptional()
-  @IsInt()
-  aprobado_por_id?: number;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  motivo_rechazo?: string;
+  confirmarContrasena?: string;
 }
