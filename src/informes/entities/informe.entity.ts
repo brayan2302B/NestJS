@@ -19,5 +19,3 @@ export class Informe {
   @JoinColumn({ name: 'fk_version' })
   version!: Version;
 }
-
-
