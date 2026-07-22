@@ -1,41 +1,46 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
+import { PersonasService } from '../personas/personas.service';
 import { JwtService } from '@nestjs/jwt';
-import { Persona } from '../personas/entities/persona.entity';
-import { LoginDto } from './dto/login.dto';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(Persona)
-    private readonly personaRepository: Repository<Persona>,
+    private readonly personasService: PersonasService,
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(dto: LoginDto) {
-    const persona = await this.personaRepository.findOne({
-      where: { correo: dto.email },
-    });
+  async login(identifier: string, contrasena: string) {
+    const user = await this.personasService.findByEmailOrDocument(identifier);
+    if (!user) {
+      throw new UnauthorizedException('Credenciales incorrectas');
+    }
 
-    if (!persona || !bcrypt.compareSync(dto.password, persona.passwordHash ?? '')) {
-      throw new UnauthorizedException('Credenciales inválidas');
+    const matches = await bcrypt.compare(contrasena, user.contrasena_hash);
+    if (!matches) {
+      throw new UnauthorizedException('Credenciales incorrectas');
+    }
+
+    if (user.estado_cuenta !== 'aprobado') {
+      throw new UnauthorizedException('Su cuenta está pendiente de aprobación por el coordinador');
     }
 
     const payload = {
-      sub: persona.id_persona,
-      email: persona.correo,
-      role: 'instructor',
+      sub: user.id_usuario,
+      email: user.correo,
+      rol: user.rol?.nombre_rol ?? 'instructor',
     };
 
+    const token = this.jwtService.sign(payload);
+
     return {
-      accessToken: this.jwtService.sign(payload),
+      token,
       user: {
-        id: persona.id_persona,
-        nombre: persona.nombre,
-        correo: persona.correo,
-        role: 'instructor',
+        id_usuario: user.id_usuario,
+        nombre_completo: user.nombre_completo,
+        correo: user.correo,
+        rol: user.rol?.nombre_rol ?? 'instructor',
+        area: user.area?.nombre_area ?? null,
       },
     };
   }

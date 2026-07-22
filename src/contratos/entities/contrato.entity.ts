@@ -1,19 +1,44 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Persona } from '../../personas/entities/persona.entity';
+import { Obligacione } from '../../obligaciones/entities/obligacione.entity';
 
 @Entity('contratos')
 export class Contrato {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'id_contrato' })
   id_contrato!: number;
 
-  @Column({ type: 'date' })
+  @ManyToOne(() => Persona, { nullable: false })
+  @JoinColumn({ name: 'id_usuario' })
+  usuario!: Persona;
+
+  @Column({ name: 'fecha_inicio', type: 'date' })
   fecha_inicio!: Date;
 
-  @Column({ type: 'date' })
+  @Column({ name: 'fecha_fin', type: 'date' })
   fecha_fin!: Date;
 
-  @Column()
+  @Column({ name: 'estado', type: 'varchar', length: 30, default: 'activo' })
   estado!: string;
 
-  @Column()
-  fk_persona!: number;
+  @CreateDateColumn({ name: 'created_at' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at!: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
+  deleted_at?: Date;
+
+  @OneToMany(() => Obligacione, (obligacion) => obligacion.contrato)
+  obligaciones!: Obligacione[];
 }

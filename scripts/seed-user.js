@@ -17,11 +17,12 @@ const path = require('path');
 
   if (!existing) {
     await repo.save(repo.create({
-      nombre: 'Instructor Demo',
-      telefono: '3000000000',
+      nombre_completo: 'Instructor Demo',
+      tipo_documento: 'CC',
+      numero_documento: '1234567890',
       correo: 'instructor@sena.edu.co',
-      documento: '1234567890',
-      passwordHash: bcrypt.hashSync('Sena1234', 10),
+      contrasena_hash: bcrypt.hashSync('Sena1234', 10),
+      estado_cuenta: 'aprobado',
     }));
     console.log('Usuario demo creado');
   } else {

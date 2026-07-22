@@ -13,26 +13,27 @@ export class AreasService {
   ) {}
 
   create(createAreaDto: CreateAreaDto) {
-    const area = this.areaRepository.create(createAreaDto);
+    const area = this.areaRepository.create({
+      nombre_area: createAreaDto.nombre_area,
+    });
     return this.areaRepository.save(area);
   }
 
   findAll() {
-    return this.areaRepository.find({ relations: { rol: true } });
+    return this.areaRepository.find();
   }
 
   findOne(id: number) {
-    return this.areaRepository.findOne({
-      where: { id_area: id },
-      relations: { rol: true },
-    });
+    return this.areaRepository.findOne({ where: { id_area: id } });
   }
 
   update(id: number, updateAreaDto: UpdateAreaDto) {
-    return this.areaRepository.update(id, updateAreaDto);
+    return this.areaRepository.update(id, {
+      nombre_area: updateAreaDto.nombre_area,
+    });
   }
 
   remove(id: number) {
-    return this.areaRepository.delete(id);
+    return this.areaRepository.softDelete(id);
   }
 }

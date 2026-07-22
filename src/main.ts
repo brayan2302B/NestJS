@@ -16,6 +16,7 @@ async function bootstrap() {
     mkdirSync(uploadDir, { recursive: true });
   }
 
+  app.setGlobalPrefix('api');
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

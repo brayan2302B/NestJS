@@ -12,23 +12,29 @@ export class ObligacionesService {
   ) {}
 
   create(createObligacioneDto: CreateObligacioneDto) {
-    const obligacion = this.obligacionesRepository.create(createObligacioneDto);
+    const obligacion = this.obligacionesRepository.create({
+      descripcion: createObligacioneDto.descripcion,
+      contrato: { id_contrato: createObligacioneDto.id_contrato } as any,
+    });
     return this.obligacionesRepository.save(obligacion);
   }
 
   findAll() {
-    return this.obligacionesRepository.find();
+    return this.obligacionesRepository.find({ relations: { contrato: true } });
   }
 
   findOne(id: number) {
-    return this.obligacionesRepository.findOneBy({ id_obligaciones: id });
+    return this.obligacionesRepository.findOne({ where: { id_obligacion: id }, relations: { contrato: true } });
   }
 
   update(id: number, updateObligacioneDto: Partial<CreateObligacioneDto>) {
-    return this.obligacionesRepository.update(id, updateObligacioneDto);
+    return this.obligacionesRepository.update(id, {
+      descripcion: updateObligacioneDto.descripcion,
+      contrato: updateObligacioneDto.id_contrato ? ({ id_contrato: updateObligacioneDto.id_contrato } as any) : undefined,
+    });
   }
 
   remove(id: number) {
-    return this.obligacionesRepository.delete(id);
+    return this.obligacionesRepository.softDelete(id);
   }
 }

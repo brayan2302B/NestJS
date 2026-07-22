@@ -1,50 +1,67 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Persona } from '../../personas/entities/persona.entity';
+import { InformeGc } from '../../informe-gc/entities/informe-gc.entity';
+import { InformeGf } from '../../informe-gf/entities/informe-gf.entity';
+import { PeriodoCarga } from '../../periodos-carga/entities/periodo-carga.entity';
 import { Version } from '../../versiones/entities/version.entity';
 
 @Entity('informes')
 export class Informe {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ name: 'id_informe' })
   id_informe!: number;
 
-  @Column({ type: 'varchar', length: 120 })
-  periodo!: string;
+  @ManyToOne(() => Persona, { nullable: false })
+  @JoinColumn({ name: 'id_usuario' })
+  usuario!: Persona;
 
-  @Column({ type: 'varchar', length: 20 })
-  tipo!: 'GC' | 'GF';
+  @ManyToOne(() => PeriodoCarga, { nullable: false })
+  @JoinColumn({ name: 'id_periodo' })
+  periodo!: PeriodoCarga;
 
-  @Column({ type: 'varchar', length: 120, nullable: true })
-  titulo?: string;
+  @Column({ name: 'tipo_informe', type: 'varchar', length: 2 })
+  tipo_informe!: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'No cargado' })
+  @Column({ name: 'estado', type: 'varchar', length: 20, default: 'borrador' })
   estado!: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  archivoUrl?: string;
+  @Column({ name: 'firmado', type: 'boolean', default: false })
+  firmado!: boolean;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  archivoNombre?: string;
+  @Column({ name: 'pendiente_sincronizacion', type: 'boolean', default: false })
+  pendiente_sincronizacion!: boolean;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
+  @Column({ name: 'fecha_envio', type: 'timestamp', nullable: true })
+  fecha_envio?: Date;
+
+  @CreateDateColumn({ name: 'created_at' })
+  created_at!: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at!: Date;
+
+  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
+  deleted_at?: Date;
+
+  @OneToOne(() => InformeGc, (informeGc) => informeGc.informe, { cascade: true })
+  informeGc?: InformeGc;
+
+  @OneToOne(() => InformeGf, (informeGf) => informeGf.informe, { cascade: true })
+  informeGf?: InformeGf;
+
+  @Column({ name: 'observacion', type: 'text', nullable: true })
   observacion?: string;
 
-  @Column({ type: 'datetime', nullable: true })
-  fechaUltimaActualizacion?: Date;
-
-  @ManyToOne(() => Persona, { eager: true, nullable: true })
-  @JoinColumn({ name: 'fk_persona' })
-  instructor?: Persona;
-
-  @ManyToOne(() => Version, { eager: true, nullable: true })
-  @JoinColumn({ name: 'fk_version' })
-  version?: Version;
-
-  @OneToMany(() => Informe, (informe) => informe.padre, { cascade: true })
-  versiones?: Informe[];
-
-  @ManyToOne(() => Informe, (informe) => informe.versiones, { nullable: true })
-  @JoinColumn({ name: 'fk_informe_padre' })
-  padre?: Informe;
+  @OneToMany(() => Version, (version) => version.informe, { cascade: true })
+  versiones!: Version[];
 }
-
-

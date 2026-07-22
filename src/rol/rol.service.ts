@@ -13,7 +13,7 @@ export class RolService {
   ) {}
 
   create(createRolDto: CreateRolDto) {
-    const rol = this.rolRepository.create(createRolDto);
+    const rol = this.rolRepository.create({ nombre_rol: createRolDto.nombre_rol });
     return this.rolRepository.save(rol);
   }
 
@@ -26,10 +26,10 @@ export class RolService {
   }
 
   update(id: number, updateRolDto: UpdateRolDto) {
-    return this.rolRepository.update(id, updateRolDto);
+    return this.rolRepository.update(id, { nombre_rol: updateRolDto.nombre_rol });
   }
 
   remove(id: number) {
-    return this.rolRepository.delete(id);
+    return this.rolRepository.softDelete(id);
   }
 }

@@ -8,8 +8,14 @@ export class PersonasController {
   constructor(private readonly personasService: PersonasService) {}
 
   @Post()
-  create(@Body() createPersonaDto: CreatePersonaDto) {
-    return this.personasService.create(createPersonaDto);
+  async create(@Body() createPersonaDto: CreatePersonaDto) {
+    await this.personasService.create(createPersonaDto);
+
+    return {
+      success: true,
+      message:
+        'Registro exitoso. Su cuenta está pendiente de aprobación por el coordinador.',
+    };
   }
 
   @Get()

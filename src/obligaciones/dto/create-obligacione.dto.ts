@@ -1,4 +1,10 @@
+import { IsInt, IsString, MaxLength } from 'class-validator';
+
 export class CreateObligacioneDto {
+  @IsString()
+  @MaxLength(255)
   descripcion!: string;
-  fk_contrato!: number;
+
+  @IsInt()
+  id_contrato!: number;
 }

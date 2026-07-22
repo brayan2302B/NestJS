@@ -1,20 +1,28 @@
-import { IsDateString, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateInformeDto {
-  @IsString()
-  @MaxLength(150)
-  titulo!: string;
-
-  @IsDateString()
-  fecha_informe!: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(50)
-  estado?: string;
+  @IsInt()
+  id_usuario!: number;
 
   @IsInt()
-  fk_version!: number;
+  id_periodo!: number;
+
+  @IsString()
+  @IsIn(['GC', 'GF'])
+  tipo_informe!: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['borrador', 'enviado', 'validado', 'rechazado'])
+  estado?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  firmado?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  pendiente_sincronizacion?: boolean;
 }
 
 
