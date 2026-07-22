@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PersonasModule } from './personas/personas.module';
+import { AuthModule } from './auth/auth.module';
 import { AreasModule } from './areas/areas.module';
 import { RolModule } from './rol/rol.module';
 import { ContratosModule } from './contratos/contratos.module';
@@ -35,6 +36,7 @@ import { PeriodosCargaModule } from './periodos-carga/periodos-carga.module';
       inject: [ConfigService],
     }),
     PersonasModule,
+    AuthModule,
     AreasModule,
     RolModule,
     ContratosModule,

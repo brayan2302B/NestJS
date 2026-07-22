@@ -54,6 +54,17 @@ export class PersonasService {
     return persona;
   }
 
+  async findByEmailOrDocument(identifier: string): Promise<Persona | null> {
+    const trimmed = identifier.trim().toLowerCase();
+    return this.personaRepository.findOne({
+      where: [
+        { correo: trimmed },
+        { numero_documento: identifier.trim() }
+      ],
+      relations: { area: true, rol: true },
+    });
+  }
+
   findAll() {
     return this.personaRepository.find({ relations: { area: true, rol: true } });
   }

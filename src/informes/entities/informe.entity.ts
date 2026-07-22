@@ -6,6 +6,7 @@ import {
   JoinColumn,
   ManyToOne,
   OneToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -13,6 +14,7 @@ import { Persona } from '../../personas/entities/persona.entity';
 import { InformeGc } from '../../informe-gc/entities/informe-gc.entity';
 import { InformeGf } from '../../informe-gf/entities/informe-gf.entity';
 import { PeriodoCarga } from '../../periodos-carga/entities/periodo-carga.entity';
+import { Version } from '../../versiones/entities/version.entity';
 
 @Entity('informes')
 export class Informe {
@@ -56,4 +58,10 @@ export class Informe {
 
   @OneToOne(() => InformeGf, (informeGf) => informeGf.informe, { cascade: true })
   informeGf?: InformeGf;
+
+  @Column({ name: 'observacion', type: 'text', nullable: true })
+  observacion?: string;
+
+  @OneToMany(() => Version, (version) => version.informe, { cascade: true })
+  versiones!: Version[];
 }
