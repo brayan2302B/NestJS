@@ -21,14 +21,11 @@
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
-<<<<<<< Updated upstream
-    "@nestjs/mapped-types": "^2.1.1",
-=======
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",
->>>>>>> Stashed changes
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.1",
     "bcryptjs": "^3.0.3",

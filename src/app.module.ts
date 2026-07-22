@@ -1,27 +1,17 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { VersionesModule } from './versiones/versiones.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AreasModule } from './areas/areas.module';
+import { AuthModule } from './auth/auth.module';
+import { ContratosModule } from './contratos/contratos.module';
 import { InformesModule } from './informes/informes.module';
 import { NovedadesModule } from './novedades/novedades.module';
-<<<<<<< Updated upstream
-
-@Module({
-  imports: [
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'postgres',
-      database: 'proyecto_formativo',
-      entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true,
-=======
-import { InformeGcModule } from './informe-gc/informe-gc.module';
-import { InformeGfModule } from './informe-gf/informe-gf.module';
-import { ActividadesModule } from './actividades/actividades.module';
-import { EvidenciasModule } from './evidencias/evidencias.module';
-import { AuthModule } from './auth/auth.module';
+import { ObligacionesModule } from './obligaciones/obligaciones.module';
+import { PersonasModule } from './personas/personas.module';
+import { RolModule } from './rol/rol.module';
+import { VersionesModule } from './versiones/versiones.module';
 
 @Module({
   imports: [
@@ -36,19 +26,18 @@ import { AuthModule } from './auth/auth.module';
         synchronize: true,
       }),
       inject: [ConfigService],
->>>>>>> Stashed changes
     }),
-    VersionesModule,
+    AreasModule,
+    AuthModule,
+    ContratosModule,
     InformesModule,
     NovedadesModule,
-<<<<<<< Updated upstream
-=======
-    InformeGcModule,
-    InformeGfModule,
-    ActividadesModule,
-    EvidenciasModule,
-    AuthModule,
->>>>>>> Stashed changes
+    ObligacionesModule,
+    PersonasModule,
+    RolModule,
+    VersionesModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

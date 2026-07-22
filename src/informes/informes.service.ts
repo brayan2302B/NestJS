@@ -81,7 +81,7 @@ export class InformesService {
       fechaUltimaActualizacion: new Date(),
       instructor,
       version: savedVersion,
-      padre: existing,
+      padre: existing ?? undefined,
     });
 
     return this.informeRepository.save(informe);
