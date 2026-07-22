@@ -1,12 +1,17 @@
-import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateInformeGfDto {
+  @IsInt()
+  id_informe!: number;
 
   @IsString()
   @MaxLength(50)
-  version_gf: string;
+  version_formato!: string;
 
-  @IsInt()
+  @IsNumber()
+  valor_total!: number;
+
   @IsOptional()
-  fk_informe?: number;
+  @IsString()
+  observaciones?: string;
 }

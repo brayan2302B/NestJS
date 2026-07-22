@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PersonasModule } from './personas/personas.module';
+import { AuthModule } from './auth/auth.module';
 import { AreasModule } from './areas/areas.module';
 import { RolModule } from './rol/rol.module';
 import { ContratosModule } from './contratos/contratos.module';
@@ -15,6 +16,7 @@ import { InformeGcModule } from './informe-gc/informe-gc.module';
 import { InformeGfModule } from './informe-gf/informe-gf.module';
 import { ActividadesModule } from './actividades/actividades.module';
 import { EvidenciasModule } from './evidencias/evidencias.module';
+import { PeriodosCargaModule } from './periodos-carga/periodos-carga.module';
 
 @Module({
   imports: [
@@ -34,6 +36,7 @@ import { EvidenciasModule } from './evidencias/evidencias.module';
       inject: [ConfigService],
     }),
     PersonasModule,
+    AuthModule,
     AreasModule,
     RolModule,
     ContratosModule,
@@ -45,6 +48,7 @@ import { EvidenciasModule } from './evidencias/evidencias.module';
     InformeGfModule,
     ActividadesModule,
     EvidenciasModule,
+    PeriodosCargaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

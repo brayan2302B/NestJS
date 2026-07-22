@@ -1,15 +1,8 @@
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsString, MaxLength } from 'class-validator';
 
 export class CreateRolDto {
   @IsString()
-  @MaxLength(50)
-  estado!: string;
-
-  @IsBoolean()
-  @IsOptional()
-  inactivo?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
-  activo?: boolean;
+  @IsIn(['Instructor', 'Coordinacion'])
+  @MaxLength(30)
+  nombre_rol!: string;
 }

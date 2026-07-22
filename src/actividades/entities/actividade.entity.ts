@@ -1,38 +1,50 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Evidencia } from '../../evidencias/entities/evidencia.entity';
 import { InformeGc } from '../../informe-gc/entities/informe-gc.entity';
 
 @Entity('actividades')
 export class Actividad {
+  @PrimaryGeneratedColumn({ name: 'id_actividad' })
+  id_actividad!: number;
 
-  @PrimaryGeneratedColumn()
-  id_actividad: number;
+  @ManyToOne(() => InformeGc, (informeGc) => informeGc.actividades, { nullable: false })
+  @JoinColumn({ name: 'id_informe_gc' })
+  informeGc!: InformeGc;
 
-  @Column({ type: 'date' })
-  fecha: Date;
+  @Column({ name: 'fecha_inicio', type: 'date' })
+  fecha_inicio!: Date;
 
-  @Column({ type: 'varchar', length: 100 })
-  competencia: string;
+  @Column({ name: 'fecha_fin', type: 'date' })
+  fecha_fin!: Date;
 
-  @Column({ type: 'varchar', length: 3 })
-  estado: string;
+  @Column({ name: 'competencia', type: 'varchar', length: 100 })
+  competencia!: string;
 
-  @Column({ type: 'date' })
-  fecha_fin: Date;
+  @Column({ name: 'resultado', type: 'text' })
+  resultado!: string;
 
-  @Column({ type: 'date' })
-  fecha_inicio: Date;
+  @Column({ name: 'estado', type: 'varchar', length: 3, default: 'ACT' })
+  estado!: string;
 
-  @Column({ type: 'text' })
-  resultado: string;
+  @CreateDateColumn({ name: 'created_at' })
+  created_at!: Date;
 
-  @Column({ type: 'int', nullable: true })
-  fk_gc: number;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at!: Date;
 
-  @ManyToOne(() => InformeGc, (informeGc) => informeGc.actividades, { nullable: true })
-  @JoinColumn({ name: 'fk_gc' })
-  informeGc: InformeGc;
+  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
+  deleted_at?: Date;
 
   @OneToMany(() => Evidencia, (evidencia) => evidencia.actividad)
-  evidencias: Evidencia[];
+  evidencias!: Evidencia[];
 }

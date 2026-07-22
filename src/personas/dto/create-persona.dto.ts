@@ -1,25 +1,41 @@
-import { IsNumber, IsString, MaxLength } from 'class-validator';
+import { Transform } from 'class-transformer';
+import {
+  IsEmail,
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreatePersonaDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
-  @MaxLength(100)
-  nombre!: string;
+  @MaxLength(150)
+  nombreCompleto!: string;
 
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @IsEmail()
+  @MaxLength(150)
+  email!: string;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
   @IsString()
-  @MaxLength(18)
-  telefono!: string;
+  @IsIn(['CC', 'CE', 'TI'])
+  tipoDocumento!: string;
 
-  @IsString()
-  @MaxLength(100)
-  correo!: string;
-
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MaxLength(20)
-  documento!: string;
+  numeroDocumento!: string;
 
-  @IsNumber()
-  fk_area!: number;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @MinLength(6)
+  @MaxLength(255)
+  contrasena!: string;
 
-  @IsNumber()
-  fk_rol!: number;
+  @IsOptional()
+  @IsString()
+  confirmarContrasena?: string;
 }
