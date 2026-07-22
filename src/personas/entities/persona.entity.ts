@@ -45,16 +45,16 @@ export class Persona {
   @Column({ name: 'firma_digital_ruta', type: 'varchar', length: 255, nullable: true })
   firma_digital_ruta?: string;
 
-  @Column({ name: 'firma_digital_actualizada_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'firma_digital_actualizada_at', type: 'datetime', nullable: true })
   firma_digital_actualizada_at?: Date;
 
-  @Column({ name: 'preferencias_notificaciones', type: 'jsonb', default: '{}' })
+  @Column({ name: 'preferencias_notificaciones', type: 'simple-json', default: '{}' })
   preferencias_notificaciones!: Record<string, unknown>;
 
   @Column({ name: 'aprobado_por_id', type: 'int', nullable: true })
   aprobado_por_id?: number;
 
-  @Column({ name: 'fecha_aprobacion', type: 'timestamp', nullable: true })
+  @Column({ name: 'fecha_aprobacion', type: 'datetime', nullable: true })
   fecha_aprobacion?: Date;
 
   @Column({ name: 'motivo_rechazo', type: 'varchar', length: 255, nullable: true })
