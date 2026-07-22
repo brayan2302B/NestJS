@@ -8,7 +8,7 @@ export class Version {
   @Column({ type: 'int' })
   numero_version!: number;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'datetime' })
   fecha_version!: Date;
 
   @Column({ type: 'varchar', length: 255 })
@@ -17,4 +17,3 @@ export class Version {
   @Column({ type: 'varchar', length: 50, default: 'activo' })
   estado!: string;
 }
-export class Versione {}
