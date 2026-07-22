@@ -10,7 +10,9 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
+import * as express from 'express';
 import { InformesService } from './informes.service';
 import { CreateInformeDto } from './dto/create-informe.dto';
 import { UpdateInformeDto } from './dto/update-informe.dto';
@@ -97,7 +99,7 @@ export class InformesController {
   }
 
   @Patch(':periodo/:tipo/estado')
-  @Roles('coordinador')
+  @Roles('coordinador', 'instructor')
   @UseGuards(RolesGuard)
   async cambiarEstado(
     @Param('periodo') periodo: string,
@@ -112,6 +114,15 @@ export class InformesController {
       throw new BadRequestException('El campo "estado" es obligatorio');
     }
     return this.informesService.cambiarEstadoReporte(periodo, tipo, estado, observacion, idUsuario);
+  }
+
+  @Get(':id/download')
+  async downloadReport(
+    @Param('id') id: number,
+    @Res() res: express.Response,
+  ) {
+    const fileData = await this.informesService.getReportFile(id);
+    return res.download(fileData.path, fileData.name);
   }
 
   // ── ENDPOINTS ORIGINALES (MANTENIDOS PARA COMPATIBILIDAD) ──
