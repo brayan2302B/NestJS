@@ -48,7 +48,7 @@ export class Persona {
   @Column({ name: 'firma_digital_actualizada_at', type: 'timestamp', nullable: true })
   firma_digital_actualizada_at?: Date;
 
-  @Column({ name: 'preferencias_notificaciones', type: 'jsonb', default: '{}' })
+  @Column({ name: 'preferencias_notificaciones', type: 'simple-json', default: '{}' })
   preferencias_notificaciones!: Record<string, unknown>;
 
   @Column({ name: 'aprobado_por_id', type: 'int', nullable: true })

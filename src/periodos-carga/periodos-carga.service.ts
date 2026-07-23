@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PeriodoCarga } from './entities/periodo-carga.entity';
@@ -13,7 +13,12 @@ export class PeriodosCargaService {
   ) {}
 
   create(createPeriodoCargaDto: CreatePeriodoCargaDto) {
-    const periodo = this.periodoCargaRepository.create(createPeriodoCargaDto);
+    const periodo = this.periodoCargaRepository.create({
+      anio: createPeriodoCargaDto.anio,
+      mes: createPeriodoCargaDto.mes,
+      fecha_limite: new Date(createPeriodoCargaDto.fecha_limite),
+      habilitado: createPeriodoCargaDto.habilitado ?? true,
+    });
     return this.periodoCargaRepository.save(periodo);
   }
 
@@ -21,15 +26,33 @@ export class PeriodosCargaService {
     return this.periodoCargaRepository.find();
   }
 
-  findOne(id: number) {
-    return this.periodoCargaRepository.findOne({ where: { id_periodo: id } });
+  async findOne(id: number) {
+    const periodo = await this.periodoCargaRepository.findOne({ where: { id_periodo: id } });
+    if (!periodo) {
+      throw new NotFoundException(`Periodo #${id} no encontrado`);
+    }
+    return periodo;
   }
 
-  update(id: number, updatePeriodoCargaDto: UpdatePeriodoCargaDto) {
-    return this.periodoCargaRepository.update(id, updatePeriodoCargaDto);
+  async update(id: number, updatePeriodoCargaDto: UpdatePeriodoCargaDto) {
+    const periodo = await this.findOne(id);
+    if (updatePeriodoCargaDto.anio !== undefined) {
+      periodo.anio = updatePeriodoCargaDto.anio;
+    }
+    if (updatePeriodoCargaDto.mes !== undefined) {
+      periodo.mes = updatePeriodoCargaDto.mes;
+    }
+    if (updatePeriodoCargaDto.fecha_limite !== undefined) {
+      periodo.fecha_limite = new Date(updatePeriodoCargaDto.fecha_limite);
+    }
+    if (updatePeriodoCargaDto.habilitado !== undefined) {
+      periodo.habilitado = updatePeriodoCargaDto.habilitado;
+    }
+    return this.periodoCargaRepository.save(periodo);
   }
 
-  remove(id: number) {
+  async remove(id: number) {
+    await this.findOne(id);
     return this.periodoCargaRepository.softDelete(id);
   }
 }

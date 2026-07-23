@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import { Informe } from './entities/informe.entity';
 import { CreateInformeDto } from './dto/create-informe.dto';
 import { UpdateInformeDto } from './dto/update-informe.dto';
@@ -395,7 +397,6 @@ export class InformesService {
   update(id: number, updateInformeDto: UpdateInformeDto) {
     return this.informeRepository.update(id, updateInformeDto);
   }
-
   remove(id: number) {
     return this.informeRepository.softDelete(id);
   }
@@ -509,5 +510,34 @@ export class InformesService {
     };
 
     return response;
+  }
+
+  async getReportFile(id: number) {
+    const report = await this.informeRepository.findOne({
+      where: { id_informe: id },
+      relations: { versiones: true },
+    });
+
+    if (!report) {
+      throw new NotFoundException(`Informe #${id} no encontrado`);
+    }
+
+    if (!report.versiones || report.versiones.length === 0) {
+      throw new NotFoundException(`El informe #${id} no tiene archivos cargados`);
+    }
+
+    // Get the latest version
+    report.versiones.sort((a, b) => b.numero_version - a.numero_version);
+    const latest = report.versiones[0];
+
+    const filePath = join(process.cwd(), latest.archivo_ruta);
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('El archivo físico no existe en el servidor');
+    }
+
+    return {
+      path: filePath,
+      name: latest.archivo_nombre_original,
+    };
   }
 }
