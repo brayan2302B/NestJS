@@ -24,7 +24,10 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from './multer-config';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 
+@ApiTags('informes')
+@ApiBearerAuth()
 @Controller('informes')
 @UseGuards(JwtGuard)
 export class InformesController {
@@ -33,20 +36,20 @@ export class InformesController {
     private readonly informeGcValidationService: InformeGcValidationService,
   ) {}
 
-  // ── NUEVOS ENDPOINTS DE INTEGRACIÓN CON EL FRONTEND ──
-
   @Get()
+  @ApiOperation({ summary: 'Obtener informes (Instructores ven sus propios informes, Coordinadores ven los de su área)' })
+  @ApiResponse({ status: 200, description: 'Lista de informes devuelta.' })
   async getInformes(@CurrentUser() user: any) {
     if (user.rol === 'coordinador') {
-      // Coordinadores ven los informes de su área o todos si no tienen
       const fullUser = await this.informesService.getUserWithArea(user.sub);
       return this.informesService.findCoordinatorReports(fullUser.area?.id_area);
     }
-    // Instructores ven sólo sus propios informes
     return this.informesService.findInstructorReports(user.sub);
   }
 
   @Get('historial')
+  @ApiOperation({ summary: 'Obtener historial de informes (Excluyendo el periodo de carga actual)' })
+  @ApiResponse({ status: 200, description: 'Lista de historial de informes.' })
   async getHistorial(@CurrentUser() user: any) {
     const isCoordinator = user.rol === 'coordinador';
     let areaId = undefined;
@@ -59,6 +62,32 @@ export class InformesController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('archivo', multerOptions))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Subir un nuevo informe de tipo GC o GF' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        archivo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Archivo PDF del informe',
+        },
+        periodo: {
+          type: 'string',
+          description: 'Periodo al que corresponde (e.g. "Julio 2026")',
+        },
+        tipo: {
+          type: 'string',
+          enum: ['GC', 'GF'],
+          description: 'Tipo de informe (GC o GF)',
+        },
+      },
+      required: ['archivo', 'periodo', 'tipo'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Informe cargado exitosamente.' })
+  @ApiResponse({ status: 400, description: 'Archivo requerido o formato inválido.' })
   async uploadInforme(
     @UploadedFile() file: any,
     @Body('periodo') periodo: string,
@@ -75,6 +104,8 @@ export class InformesController {
   }
 
   @Get(':periodo/:tipo')
+  @ApiOperation({ summary: 'Obtener los detalles de un informe por periodo y tipo' })
+  @ApiResponse({ status: 200, description: 'Detalles del informe o estructura vacía si no existe.' })
   async getDetalle(
     @Param('periodo') periodo: string,
     @Param('tipo') tipo: string,
@@ -86,6 +117,22 @@ export class InformesController {
 
   @Post(':periodo/:tipo/version')
   @UseInterceptors(FileInterceptor('archivo', multerOptions))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Subir una nueva versión de un informe existente' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        archivo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Nuevo archivo PDF del informe',
+        },
+      },
+      required: ['archivo'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Nueva versión cargada exitosamente.' })
   async uploadNuevaVersion(
     @Param('periodo') periodo: string,
     @Param('tipo') tipo: string,
@@ -101,6 +148,8 @@ export class InformesController {
   @Patch(':periodo/:tipo/estado')
   @Roles('coordinador', 'instructor')
   @UseGuards(RolesGuard)
+  @ApiOperation({ summary: 'Cambiar el estado de un informe (Solo Coordinadores e Instructores)' })
+  @ApiResponse({ status: 200, description: 'Estado del informe actualizado.' })
   async cambiarEstado(
     @Param('periodo') periodo: string,
     @Param('tipo') tipo: string,
@@ -117,6 +166,9 @@ export class InformesController {
   }
 
   @Get(':id/download')
+  @ApiOperation({ summary: 'Descargar el archivo PDF de la última versión de un informe' })
+  @ApiResponse({ status: 200, description: 'Envío del archivo PDF.' })
+  @ApiResponse({ status: 404, description: 'Informe o archivo físico no encontrado.' })
   async downloadReport(
     @Param('id') id: number,
     @Res() res: express.Response,
@@ -125,34 +177,40 @@ export class InformesController {
     return res.download(fileData.path, fileData.name);
   }
 
-  // ── ENDPOINTS ORIGINALES (MANTENIDOS PARA COMPATIBILIDAD) ──
-
   @Post()
+  @ApiOperation({ summary: 'Crear un registro de informe básico' })
   create(@Body() createInformeDto: CreateInformeDto) {
     return this.informesService.create(createInformeDto);
   }
 
   @Get(':id/buscar')
+  @ApiOperation({ summary: 'Buscar un informe básico por ID' })
   findOne(@Param('id') id: string) {
     return this.informesService.findOne(+id);
   }
 
   @Get(':id/pdf-gc')
+  @ApiOperation({ summary: 'Obtener toda la información estructurada de un informe GC para renderizar PDF/Vista de impresión' })
+  @ApiResponse({ status: 200, description: 'Objeto de respuesta estructurada.' })
   getPdfGc(@Param('id') id: string) {
     return this.informesService.getDatosPdfGc(+id);
   }
 
   @Post(':id/validar')
+  @ApiOperation({ summary: 'Validar la consistencia y estructura de un informe GC con un motor inteligente' })
+  @ApiResponse({ status: 200, description: 'Resultados de validación de 3 niveles.' })
   validar(@Param('id') id: string, @Body() payload: ValidarInformeGcDto) {
     return this.informeGcValidationService.validar(+id, payload);
   }
 
   @Patch(':id/actualizar')
+  @ApiOperation({ summary: 'Actualizar un registro de informe básico' })
   update(@Param('id') id: string, @Body() updateInformeDto: UpdateInformeDto) {
     return this.informesService.update(+id, updateInformeDto);
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Eliminar un informe por ID' })
   remove(@Param('id') id: string) {
     return this.informesService.remove(+id);
   }

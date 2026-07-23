@@ -1,26 +1,33 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { Persona } from '../personas/entities/persona.entity';
+import { PersonasService } from '../personas/personas.service';
+import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let repo: { findOne: jest.Mock; create: jest.Mock; save: jest.Mock };
+  let mockPersonasService: { findByEmailOrDocument: jest.Mock };
+  let mockJwtService: { sign: jest.Mock };
 
   beforeEach(async () => {
-    repo = {
-      findOne: jest.fn(),
-      create: jest.fn(),
-      save: jest.fn(),
+    mockPersonasService = {
+      findByEmailOrDocument: jest.fn(),
+    };
+
+    mockJwtService = {
+      sign: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         {
-          provide: getRepositoryToken(Persona),
-          useValue: repo,
+          provide: PersonasService,
+          useValue: mockPersonasService,
+        },
+        {
+          provide: JwtService,
+          useValue: mockJwtService,
         },
       ],
     }).compile();
@@ -30,18 +37,22 @@ describe('AuthService', () => {
 
   it('should login with valid credentials', async () => {
     const passwordHash = bcrypt.hashSync('Sena1234', 10);
-    repo.findOne.mockResolvedValue({
-      id_persona: 1,
+    mockPersonasService.findByEmailOrDocument.mockResolvedValue({
+      id_usuario: 1,
       correo: 'instructor@sena.edu.co',
-      passwordHash,
-      nombre: 'Instructor',
-      role: 'instructor',
+      contrasena_hash: passwordHash,
+      nombre_completo: 'Instructor',
+      estado_cuenta: 'aprobado',
+      rol: { nombre_rol: 'instructor' },
+      area: { nombre_area: 'TI' },
     });
 
-    const result = await service.login({ email: 'instructor@sena.edu.co', password: 'Sena1234' });
+    mockJwtService.sign.mockReturnValue('mock-jwt-token');
 
-    expect(result.accessToken).toBeDefined();
+    const result = await service.login('instructor@sena.edu.co', 'Sena1234');
+
+    expect(result.token).toBe('mock-jwt-token');
     expect(result.user.correo).toBe('instructor@sena.edu.co');
-    expect(result.user.role).toBe('instructor');
+    expect(result.user.rol).toBe('instructor');
   });
 });

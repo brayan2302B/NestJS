@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InformeGc } from './entities/informe-gc.entity';
@@ -22,20 +22,29 @@ export class InformeGcService {
   }
 
   findAll() {
-    return this.informeGcRepository.find({ relations: { informe: true, contrato: true } });
+    return this.informeGcRepository.find({ relations: { informe: { usuario: true }, contrato: true } });
+  }
+
+  findByUserId(userId: number) {
+    return this.informeGcRepository.find({
+      where: { informe: { usuario: { id_usuario: userId } } },
+      relations: { informe: true, contrato: true },
+    });
   }
 
   async findOne(id: number) {
     const informe = await this.informeGcRepository.findOne({
       where: { id_informe_gc: id },
-      relations: { informe: true, contrato: true },
+      relations: { informe: { usuario: true }, contrato: true },
     });
     if (!informe) throw new NotFoundException(`InformeGc #${id} no encontrado`);
     return informe;
   }
 
-  async update(id: number, updateInformeGcDto: UpdateInformeGcDto) {
+  async update(id: number, updateInformeGcDto: UpdateInformeGcDto, userId: number, userRol: string) {
     await this.findOne(id);
+    await this.checkOwnership(id, userId, userRol);
+
     await this.informeGcRepository.update(id, {
       version_formato: updateInformeGcDto.version_formato,
       informe: updateInformeGcDto.id_informe ? ({ id_informe: updateInformeGcDto.id_informe } as any) : undefined,
@@ -44,8 +53,17 @@ export class InformeGcService {
     return this.findOne(id);
   }
 
-  async remove(id: number) {
+  async remove(id: number, userId: number, userRol: string) {
     await this.findOne(id);
+    await this.checkOwnership(id, userId, userRol);
     return this.informeGcRepository.softDelete(id);
+  }
+
+  async checkOwnership(idGc: number, userId: number, userRol: string) {
+    if (userRol === 'coordinador') return;
+    const gc = await this.findOne(idGc);
+    if (gc.informe?.usuario?.id_usuario !== userId) {
+      throw new ForbiddenException('No tiene permisos para acceder a este informe GC');
+    }
   }
 }

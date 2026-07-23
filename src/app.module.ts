@@ -23,13 +23,32 @@ import { PeriodosCargaModule } from './periodos-carga/periodos-carga.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        type: 'sqljs' as const,
-        autoSave: true,
-        location: config.get('DB_NAME') ?? 'sena.db',
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
-      }),
+      useFactory: (config: ConfigService) => {
+        const dbType = config.get<string>('DB_TYPE', 'sqlite');
+        const isProduction = config.get<string>('NODE_ENV') === 'production';
+        const sync = config.get<string>('DB_SYNCHRONIZE') === 'true' || (!isProduction && config.get<string>('DB_SYNCHRONIZE') !== 'false');
+
+        if (dbType === 'postgres') {
+          return {
+            type: 'postgres',
+            host: config.get<string>('DB_HOST', 'localhost'),
+            port: config.get<number>('DB_PORT', 5432),
+            username: config.get<string>('DB_USERNAME', 'postgres'),
+            password: config.get<string>('DB_PASSWORD', 'postgres'),
+            database: config.get<string>('DB_NAME', 'sena'),
+            entities: [__dirname + '/**/*.entity{.ts,.js}'],
+            synchronize: sync,
+          };
+        }
+
+        return {
+          type: 'sqljs' as const,
+          autoSave: true,
+          location: config.get<string>('DB_NAME', 'sena.db'),
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: sync,
+        };
+      },
       inject: [ConfigService],
     }),
     AreasModule,

@@ -41,7 +41,7 @@ export class Informe {
   @Column({ name: 'pendiente_sincronizacion', type: 'boolean', default: false })
   pendiente_sincronizacion!: boolean;
 
-  @Column({ name: 'fecha_envio', type: 'datetime', nullable: true })
+  @Column({ name: 'fecha_envio', type: 'timestamp', nullable: true })
   fecha_envio?: Date;
 
   @CreateDateColumn({ name: 'created_at' })

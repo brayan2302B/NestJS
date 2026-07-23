@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InformeGf } from './entities/informe-gf.entity';
@@ -23,20 +23,29 @@ export class InformeGfService {
   }
 
   findAll() {
-    return this.informeGfRepository.find({ relations: { informe: true } });
+    return this.informeGfRepository.find({ relations: { informe: { usuario: true } } });
+  }
+
+  findByUserId(userId: number) {
+    return this.informeGfRepository.find({
+      where: { informe: { usuario: { id_usuario: userId } } },
+      relations: { informe: true },
+    });
   }
 
   async findOne(id: number) {
     const informe = await this.informeGfRepository.findOne({
       where: { id_informe_gf: id },
-      relations: { informe: true },
+      relations: { informe: { usuario: true } },
     });
     if (!informe) throw new NotFoundException(`InformeGf #${id} no encontrado`);
     return informe;
   }
 
-  async update(id: number, updateInformeGfDto: UpdateInformeGfDto) {
+  async update(id: number, updateInformeGfDto: UpdateInformeGfDto, userId: number, userRol: string) {
     await this.findOne(id);
+    await this.checkOwnership(id, userId, userRol);
+
     await this.informeGfRepository.update(id, {
       version_formato: updateInformeGfDto.version_formato,
       valor_total: updateInformeGfDto.valor_total,
@@ -46,8 +55,17 @@ export class InformeGfService {
     return this.findOne(id);
   }
 
-  async remove(id: number) {
+  async remove(id: number, userId: number, userRol: string) {
     await this.findOne(id);
+    await this.checkOwnership(id, userId, userRol);
     return this.informeGfRepository.softDelete(id);
+  }
+
+  async checkOwnership(idGf: number, userId: number, userRol: string) {
+    if (userRol === 'coordinador') return;
+    const gf = await this.findOne(idGf);
+    if (gf.informe?.usuario?.id_usuario !== userId) {
+      throw new ForbiddenException('No tiene permisos para acceder a este informe GF');
+    }
   }
 }

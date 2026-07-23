@@ -13,7 +13,7 @@ export class Version {
   @Column({ name: 'numero_version', type: 'int' })
   numero_version!: number;
 
-  @Column({ name: 'fecha_version', type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ name: 'fecha_version', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   fecha_version!: Date;
 
   @Column({ name: 'descripcion', type: 'varchar', length: 255, nullable: true })
