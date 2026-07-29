@@ -61,10 +61,10 @@ export class Persona {
   motivo_rechazo?: string;
 
   @Column({ name: 'reset_token', type: 'varchar', length: 255, nullable: true })
-  reset_token?: string | null;
+  reset_token?: string;
 
   @Column({ name: 'reset_token_expiry', type: 'timestamp', nullable: true })
-  reset_token_expiry?: Date | null;
+  reset_token_expiry?: Date;
 
   @CreateDateColumn({ name: 'created_at' })
   created_at!: Date;

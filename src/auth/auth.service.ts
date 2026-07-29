@@ -1,9 +1,8 @@
 import {
-  BadRequestException,
   Injectable,
-  Logger,
-  NotFoundException,
   UnauthorizedException,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PersonasService } from '../personas/personas.service';
 import { JwtService } from '@nestjs/jwt';
@@ -54,99 +53,77 @@ export class AuthService {
         id_usuario: user.id_usuario,
         nombre_completo: user.nombre_completo,
         correo: user.correo,
-        rol: user.rol?.nombre_rol ?? 'instructor',
-        area: user.area?.nombre_area ?? null,
+        tipo_documento: user.tipo_documento,
+        numero_documento: user.numero_documento,
+        rol: user.rol,
+        area: user.area,
+        firma_digital_ruta: user.firma_digital_ruta || null,
       },
     };
   }
 
-  // ─── FORGOT PASSWORD ─────────────────────────────────────────────────────────
-
-  async forgotPassword(email: string) {
-    // Always return a generic message to avoid leaking user existence
-    const user = await this.personasService.findByEmail(email);
-
-    if (user) {
-      // Generate a secure random token (64 hex chars = 32 bytes)
-      const resetToken = crypto.randomBytes(32).toString('hex');
-
-      // Token expires in 1 hour
-      const expiry = new Date();
-      expiry.setHours(expiry.getHours() + 1);
-
-      user.reset_token = resetToken;
-      user.reset_token_expiry = expiry;
-      await this.personasService.savePersona(user);
-
-      // Send token exclusively via email — never exposed in the API response
-      try {
-        await this.mailService.sendPasswordReset(email, resetToken);
-      } catch (mailErr) {
-        this.logger.error(`Failed to send reset email to ${email}`, mailErr);
-      }
-    }
-
-    // Generic response regardless of whether the user was found
-    return {
-      message:
-        'Si el correo está registrado, recibirás las instrucciones de recuperación.',
-    };
-  }
-
-  // ─── RESET PASSWORD ──────────────────────────────────────────────────────────
-
-  async resetPassword(token: string, newPassword: string) {
-    const cleanToken = token.trim();
-
-    const user = await this.personasService.findByResetToken(cleanToken);
-
-    if (!user) {
-      throw new BadRequestException('Token inválido o no encontrado');
-    }
-
-    if (!user.reset_token_expiry || user.reset_token_expiry < new Date()) {
-      // Clear the expired token
-      user.reset_token = null;
-      user.reset_token_expiry = null;
-      await this.personasService.savePersona(user);
-      throw new BadRequestException(
-        'El token ha expirado. Solicita uno nuevo.',
-      );
-    }
-
-    // Hash the new password
-    user.contrasena_hash = await bcrypt.hash(newPassword, 10);
-
-    // Clear the reset token after use (one-time use)
-    user.reset_token = null;
-    user.reset_token_expiry = null;
-
-    await this.personasService.savePersona(user);
-
-    return { message: 'Contraseña actualizada correctamente' };
-  }
-
-  // ─── CHANGE PASSWORD (authenticated user) ───────────────────────────────────
-
-  async changePassword(
-    userId: number,
-    currentPassword: string,
-    newPassword: string,
-  ) {
+  async changePassword(userId: number, currentPassword: string, newPassword: string) {
     const user = await this.personasService.findOne(userId);
-
-    if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
-    }
 
     const matches = await bcrypt.compare(currentPassword, user.contrasena_hash);
     if (!matches) {
       throw new UnauthorizedException('La contraseña actual es incorrecta');
     }
 
-    user.contrasena_hash = await bcrypt.hash(newPassword, 10);
-    await this.personasService.savePersona(user);
+    const newHash = await bcrypt.hash(newPassword, 10);
 
-    return { message: 'Contraseña cambiada correctamente' };
+    // Update directly via the repository method
+    await this.personasService.update(userId, { contrasena: newPassword });
+
+    return { success: true, message: 'Contraseña actualizada correctamente' };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.personasService.findByEmailOrDocument(email);
+    if (!user) {
+      // Security: don't reveal if the user exists
+      return {
+        success: true,
+        message: 'Si el correo existe en el sistema, recibirás instrucciones.',
+      };
+    }
+
+    // Generate a secure random token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const expiry = new Date();
+    expiry.setHours(expiry.getHours() + 1); // Token valid for 1 hour
+
+    // Save token to the user record
+    await this.personasService.saveResetToken(user.id_usuario, resetToken, expiry);
+
+    // In production, this token would be sent via email.
+    // For development: return the token in the response.
+    console.log(`[DEV] Reset token for ${email}: ${resetToken}`);
+
+    return {
+      success: true,
+      message: 'Si el correo existe en el sistema, recibirás instrucciones.',
+      // DEV ONLY — remove in production:
+      dev_token: resetToken,
+      dev_email: email,
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.personasService.findByResetToken(token);
+
+    if (!user) {
+      throw new BadRequestException('El token de recuperación no es válido o ha expirado');
+    }
+
+    if (!user.reset_token_expiry || new Date() > user.reset_token_expiry) {
+      throw new BadRequestException('El token de recuperación ha expirado. Solicita uno nuevo.');
+    }
+
+    // Update password and clear the token
+    await this.personasService.update(user.id_usuario, { contrasena: newPassword });
+    await this.personasService.clearResetToken(user.id_usuario);
+
+    return { success: true, message: 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.' };
   }
 }

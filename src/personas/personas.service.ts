@@ -138,4 +138,25 @@ export class PersonasService {
   remove(id: number) {
     return this.personaRepository.softDelete(id);
   }
+
+  async saveResetToken(userId: number, token: string, expiry: Date): Promise<void> {
+    await this.personaRepository.update(userId, {
+      reset_token: token,
+      reset_token_expiry: expiry,
+    } as any);
+  }
+
+  async findByResetToken(token: string): Promise<Persona | null> {
+    return this.personaRepository.findOne({
+      where: { reset_token: token },
+      relations: { area: true, rol: true },
+    });
+  }
+
+  async clearResetToken(userId: number): Promise<void> {
+    await this.personaRepository.update(userId, {
+      reset_token: null,
+      reset_token_expiry: null,
+    } as any);
+  }
 }

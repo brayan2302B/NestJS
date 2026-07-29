@@ -17,7 +17,7 @@ import { InformeGfModule } from './informe-gf/informe-gf.module';
 import { ActividadesModule } from './actividades/actividades.module';
 import { EvidenciasModule } from './evidencias/evidencias.module';
 import { PeriodosCargaModule } from './periodos-carga/periodos-carga.module';
-import { MailModule } from './mail/mail.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
 
 @Module({
   imports: [
@@ -66,7 +66,7 @@ import { MailModule } from './mail/mail.module';
     ActividadesModule,
     EvidenciasModule,
     PeriodosCargaModule,
-    MailModule,
+    NotificacionesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
