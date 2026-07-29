@@ -103,6 +103,73 @@ export class InformesService {
     return query.getMany();
   }
 
+  async getEstadisticas(filtros: { instructorId?: number; mes?: string; areaId?: number }) {
+    const qb = this.informeRepository.createQueryBuilder('informe')
+      .leftJoinAndSelect('informe.usuario', 'usuario')
+      .leftJoinAndSelect('usuario.area', 'area')
+      .leftJoinAndSelect('informe.periodo', 'periodo');
+
+    if (filtros.instructorId) {
+      qb.andWhere('usuario.id_usuario = :instructorId', { instructorId: filtros.instructorId });
+    }
+    
+    if (filtros.areaId) {
+      qb.andWhere('area.id_area = :areaId', { areaId: filtros.areaId });
+    }
+    
+    if (filtros.mes) {
+      const { mes, anio } = this.parsePeriod(filtros.mes);
+      qb.andWhere('periodo.mes = :mes AND periodo.anio = :anio', { mes, anio });
+    }
+
+    const informes = await qb.getMany();
+
+    let aprobados = 0;
+    let devueltos = 0;
+    let pendientes = 0;
+    const cumplimientoPorInstructor: Record<string, any> = {};
+
+    informes.forEach(informe => {
+      const isApproved = informe.estado === 'validado' || informe.estado === 'aprobado';
+      const isRejected = informe.estado === 'devuelto' || informe.estado === 'rechazado';
+      
+      if (isApproved) aprobados++;
+      else if (isRejected) devueltos++;
+      else pendientes++;
+
+      const nombre = informe.usuario.nombre_completo;
+      if (!cumplimientoPorInstructor[nombre]) {
+        cumplimientoPorInstructor[nombre] = { totales: 0, aprobados: 0, devueltos: 0, pendientes: 0 };
+      }
+      
+      cumplimientoPorInstructor[nombre].totales++;
+      if (isApproved) cumplimientoPorInstructor[nombre].aprobados++;
+      else if (isRejected) cumplimientoPorInstructor[nombre].devueltos++;
+      else cumplimientoPorInstructor[nombre].pendientes++;
+    });
+
+    const totales = informes.length;
+    const porcentaje_cumplimiento = totales > 0 ? (aprobados / totales) * 100 : 0;
+
+    return {
+      metricas: {
+        totales,
+        aprobados,
+        rechazados: devueltos,
+        pendientes,
+        porcentaje_cumplimiento: parseFloat(porcentaje_cumplimiento.toFixed(2)),
+      },
+      datasets: {
+        cumplimiento_por_instructor: cumplimientoPorInstructor,
+        distribucion_estados: {
+          Aprobados: aprobados,
+          Rechazados: devueltos,
+          Pendientes: pendientes,
+        }
+      }
+    };
+  }
+
   async uploadReport(idUsuario: number, file: any, periodoStr: string, tipo: string) {
     const user = await this.getUserWithArea(idUsuario);
     const periodo = await this.findOrCreatePeriodo(periodoStr);

@@ -42,6 +42,9 @@ export class Persona {
   @Column({ name: 'estado_cuenta', type: 'varchar', length: 20, default: 'pendiente' })
   estado_cuenta!: string;
 
+  @Column({ name: 'carpeta_drive_url', type: 'varchar', length: 255, nullable: true })
+  carpeta_drive_url?: string;
+
   @Column({ name: 'firma_digital_ruta', type: 'varchar', length: 255, nullable: true })
   firma_digital_ruta?: string;
 

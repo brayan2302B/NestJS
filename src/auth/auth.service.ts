@@ -1,8 +1,8 @@
 import {
   Injectable,
+  Logger,
   UnauthorizedException,
   BadRequestException,
-  NotFoundException,
 } from '@nestjs/common';
 import { PersonasService } from '../personas/personas.service';
 import { JwtService } from '@nestjs/jwt';
@@ -52,11 +52,14 @@ export class AuthService {
       user: {
         id_usuario: user.id_usuario,
         nombre_completo: user.nombre_completo,
+        nombreCompleto: user.nombre_completo, // Para compatibilidad directa con frontend
         correo: user.correo,
+        email: user.correo, // Para compatibilidad directa con frontend
         tipo_documento: user.tipo_documento,
         numero_documento: user.numero_documento,
-        rol: user.rol,
-        area: user.area,
+        documento: user.numero_documento, // Para compatibilidad directa con frontend
+        rol: user.rol?.nombre_rol ?? 'instructor',
+        area: user.area?.nombre_area ?? 'Sin Área Asignada',
         firma_digital_ruta: user.firma_digital_ruta || null,
       },
     };
@@ -70,9 +73,7 @@ export class AuthService {
       throw new UnauthorizedException('La contraseña actual es incorrecta');
     }
 
-    const newHash = await bcrypt.hash(newPassword, 10);
-
-    // Update directly via the repository method
+    // PersonasService.update() hashes the password internally
     await this.personasService.update(userId, { contrasena: newPassword });
 
     return { success: true, message: 'Contraseña actualizada correctamente' };
@@ -95,6 +96,16 @@ export class AuthService {
 
     // Save token to the user record
     await this.personasService.saveResetToken(user.id_usuario, resetToken, expiry);
+
+    // Send the email with the reset token
+    try {
+      await this.mailService.sendPasswordReset(email, resetToken);
+      this.logger.log(`Password reset email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Error sending password reset email to ${email}`, error.stack);
+      // Even if email fails, we shouldn't throw error to the user if we don't want to expose internal issues
+      // But we can just log it.
+    }
 
     // In production, this token would be sent via email.
     // For development: return the token in the response.

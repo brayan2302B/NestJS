@@ -11,6 +11,7 @@ import {
   UploadedFile,
   BadRequestException,
   Res,
+  Query,
 } from '@nestjs/common';
 import * as express from 'express';
 import { InformesService } from './informes.service';
@@ -24,7 +25,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from './multer-config';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 
 @ApiTags('informes')
 @ApiBearerAuth()
@@ -58,6 +59,42 @@ export class InformesController {
       areaId = fullUser.area?.id_area;
     }
     return this.informesService.findHistorial(user.sub, isCoordinator, areaId);
+  }
+
+  @Get('estadisticas')
+  @ApiOperation({ summary: 'Obtener métricas y estadísticas de los informes' })
+  @ApiQuery({ name: 'instructorId', required: false })
+  @ApiQuery({ name: 'mes', required: false, description: 'Ejemplo: Julio 2026' })
+  @ApiQuery({ name: 'areaId', required: false })
+  @ApiResponse({ status: 200, description: 'Estadísticas calculadas en base a filtros.' })
+  async getEstadisticas(
+    @Query() queryParams: any,
+    @CurrentUser() user?: any,
+  ) {
+    const isCoordinator = user.rol === 'coordinador';
+    
+    // Support both 'instructorId' and 'instructor' from frontend
+    const paramInstructor = queryParams.instructorId || queryParams.instructor;
+    const paramArea = queryParams.areaId || queryParams.area;
+    const paramMes = queryParams.mes || queryParams.fecha;
+
+    let filterAreaId = paramArea ? parseInt(paramArea, 10) : undefined;
+    let filterInstructorId = paramInstructor ? parseInt(paramInstructor, 10) : undefined;
+    
+    if (isCoordinator && !filterAreaId) {
+      const fullUser = await this.informesService.getUserWithArea(user.sub);
+      filterAreaId = fullUser.area?.id_area;
+    }
+
+    if (!isCoordinator) {
+      filterInstructorId = user.sub;
+    }
+
+    return this.informesService.getEstadisticas({
+      instructorId: filterInstructorId,
+      mes: paramMes,
+      areaId: filterAreaId,
+    });
   }
 
   @Post('upload')
