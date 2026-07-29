@@ -60,6 +60,12 @@ export class Persona {
   @Column({ name: 'motivo_rechazo', type: 'varchar', length: 255, nullable: true })
   motivo_rechazo?: string;
 
+  @Column({ name: 'reset_token', type: 'varchar', length: 255, nullable: true })
+  reset_token?: string | null;
+
+  @Column({ name: 'reset_token_expiry', type: 'timestamp', nullable: true })
+  reset_token_expiry?: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   created_at!: Date;
 
