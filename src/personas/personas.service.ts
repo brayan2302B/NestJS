@@ -65,6 +65,24 @@ export class PersonasService {
     });
   }
 
+  async findByEmail(email: string): Promise<Persona | null> {
+    return this.personaRepository.findOne({
+      where: { correo: email.trim().toLowerCase() },
+      relations: { area: true, rol: true },
+    });
+  }
+
+  async findByResetToken(token: string): Promise<Persona | null> {
+    return this.personaRepository.findOne({
+      where: { reset_token: token },
+    });
+  }
+
+  async savePersona(persona: Persona): Promise<Persona> {
+    return this.personaRepository.save(persona);
+  }
+
+
   findAll() {
     return this.personaRepository.find({ relations: { area: true, rol: true } });
   }

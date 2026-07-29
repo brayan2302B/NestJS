@@ -21,6 +21,8 @@ import { CurrentUser } from './decorators/user.decorator';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  // ─── POST /auth/login ────────────────────────────────────────────────────────
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión de usuario' })

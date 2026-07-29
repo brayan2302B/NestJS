@@ -6,15 +6,21 @@ import {
 } from '@nestjs/common';
 import { PersonasService } from '../personas/personas.service';
 import { JwtService } from '@nestjs/jwt';
+import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly personasService: PersonasService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
+
+  // ─── LOGIN ───────────────────────────────────────────────────────────────────
 
   async login(identifier: string, contrasena: string) {
     const user = await this.personasService.findByEmailOrDocument(identifier);
@@ -28,7 +34,9 @@ export class AuthService {
     }
 
     if (user.estado_cuenta !== 'aprobado') {
-      throw new UnauthorizedException('Su cuenta está pendiente de aprobación por el coordinador');
+      throw new UnauthorizedException(
+        'Su cuenta está pendiente de aprobación por el coordinador',
+      );
     }
 
     const payload = {
