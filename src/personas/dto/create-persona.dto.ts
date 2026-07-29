@@ -4,6 +4,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -34,11 +35,14 @@ export class CreatePersonaDto {
   @MaxLength(20)
   numeroDocumento!: string;
 
-  @ApiProperty({ description: 'Contraseña para la cuenta', minLength: 6, example: 'instructor123' })
+  @ApiProperty({ description: 'Contraseña para la cuenta', minLength: 8, example: 'Instructor123*' })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   @MaxLength(255)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{8,}$/, {
+    message: 'La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula, un número y un carácter especial.',
+  })
   contrasena!: string;
 
   @ApiProperty({ description: 'Confirmación de la contraseña', required: false, example: 'instructor123' })

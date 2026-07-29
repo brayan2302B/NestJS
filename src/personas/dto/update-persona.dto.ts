@@ -1,4 +1,4 @@
-import { IsEmail, IsInt, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsInt, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdatePersonaDto {
@@ -26,11 +26,14 @@ export class UpdatePersonaDto {
   @MaxLength(20)
   numeroDocumento?: string;
 
-  @ApiProperty({ description: 'Contraseña para la cuenta', minLength: 6, required: false, example: 'instructor123' })
+  @ApiProperty({ description: 'Contraseña para la cuenta', minLength: 8, required: false, example: 'Instructor123*' })
   @IsOptional()
   @IsString()
-  @MinLength(6)
+  @MinLength(8)
   @MaxLength(255)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{8,}$/, {
+    message: 'La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula, un número y un carácter especial.',
+  })
   contrasena?: string;
 
   @ApiProperty({ description: 'Estado de la cuenta (Solo Coordinador)', enum: ['pendiente', 'aprobado', 'rechazado'], required: false, example: 'aprobado' })
@@ -54,4 +57,10 @@ export class UpdatePersonaDto {
   @IsString()
   @MaxLength(255)
   motivo_rechazo?: string;
+
+  @ApiProperty({ description: 'URL de la carpeta de Google Drive del instructor', required: false, example: 'https://drive.google.com/drive/folders/1abc...' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  carpeta_drive_url?: string;
 }

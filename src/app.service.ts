@@ -43,7 +43,10 @@ export class AppService implements OnModuleInit {
 
       // Check if default instructor exists
       const instructorUser = await personaRepo.findOne({
-        where: { numero_documento: '123456' },
+        where: [
+          { numero_documento: '123456' },
+          { correo: 'juan.perez@sena.edu.co' }
+        ],
       });
       if (!instructorUser) {
         const contrasenaHash = await bcrypt.hash('instructor123', 10);
@@ -63,7 +66,10 @@ export class AppService implements OnModuleInit {
 
       // Check if default coordinator exists
       const coordinatorUser = await personaRepo.findOne({
-        where: { numero_documento: '654321' },
+        where: [
+          { numero_documento: '654321' },
+          { correo: 'maria.garcia@sena.edu.co' }
+        ],
       });
       if (!coordinatorUser) {
         const contrasenaHash = await bcrypt.hash('coordinador123', 10);

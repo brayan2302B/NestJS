@@ -72,16 +72,6 @@ export class PersonasService {
     });
   }
 
-  async findByResetToken(token: string): Promise<Persona | null> {
-    return this.personaRepository.findOne({
-      where: { reset_token: token },
-    });
-  }
-
-  async savePersona(persona: Persona): Promise<Persona> {
-    return this.personaRepository.save(persona);
-  }
-
 
   findAll() {
     return this.personaRepository.find({ relations: { area: true, rol: true } });
@@ -124,6 +114,9 @@ export class PersonasService {
     }
     if (updatePersonaDto.motivo_rechazo !== undefined) {
       persona.motivo_rechazo = updatePersonaDto.motivo_rechazo;
+    }
+    if (updatePersonaDto.carpeta_drive_url !== undefined) {
+      persona.carpeta_drive_url = updatePersonaDto.carpeta_drive_url;
     }
     if (updatePersonaDto.id_rol !== undefined) {
       persona.rol = updatePersonaDto.id_rol ? ({ id_rol: updatePersonaDto.id_rol } as any) : null;
