@@ -26,8 +26,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => {
         const dbType = config.get<string>('DB_TYPE', 'sqlite');
-        const isProduction = config.get<string>('NODE_ENV') === 'production';
-        const sync = config.get<string>('DB_SYNCHRONIZE') === 'true' || (!isProduction && config.get<string>('DB_SYNCHRONIZE') !== 'false');
+        const sync = config.get<string>('DB_SYNCHRONIZE') === 'true';
 
         if (dbType === 'postgres') {
           return {
@@ -38,6 +37,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
             password: config.get<string>('DB_PASSWORD', 'postgres'),
             database: config.get<string>('DB_NAME', 'sena'),
             entities: [__dirname + '/**/*.entity{.ts,.js}'],
+            migrations: [__dirname + '/migrations/*{.ts,.js}'],
             synchronize: sync,
           };
         }
@@ -47,6 +47,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
           autoSave: true,
           location: config.get<string>('DB_NAME', 'sena.db'),
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          migrations: [__dirname + '/migrations/*{.ts,.js}'],
           synchronize: sync,
         };
       },
