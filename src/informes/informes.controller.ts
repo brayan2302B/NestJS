@@ -140,6 +140,45 @@ export class InformesController {
     return this.informesService.uploadReport(user.sub, file, periodo, tipo);
   }
 
+  @Get(':id/download')
+  @ApiOperation({ summary: 'Descargar el archivo PDF de la última versión de un informe' })
+  @ApiResponse({ status: 200, description: 'Envío del archivo PDF.' })
+  @ApiResponse({ status: 404, description: 'Informe o archivo físico no encontrado.' })
+  async downloadReport(
+    @Param('id') id: number,
+    @Res() res: express.Response,
+  ) {
+    console.log(`\n>>> [DEBUG-BACKEND] EJECUTANDO downloadReport | ID recibido: ${id} (tipo: ${typeof id})`);
+    const fileData = await this.informesService.getReportFile(id);
+    return res.download(fileData.path, fileData.name);
+  }
+
+  @Get(':id/view')
+  @ApiOperation({ summary: 'Ver el archivo PDF de la última versión de un informe' })
+  @ApiResponse({ status: 200, description: 'Envío del archivo PDF para visualización.' })
+  @ApiResponse({ status: 404, description: 'Informe o archivo físico no encontrado.' })
+  async viewReport(
+    @Param('id') id: number,
+    @Res() res: express.Response,
+  ) {
+    console.log(`\n>>> [DEBUG-BACKEND] EJECUTANDO viewReport | ID recibido: ${id} (tipo: ${typeof id})`);
+    const fileData = await this.informesService.getReportFile(id);
+    console.log(`>>> [DEBUG-BACKEND] viewReport | Ruta del archivo: ${fileData.path}`);
+    console.log(`>>> [DEBUG-BACKEND] viewReport | Nombre del archivo: ${fileData.name}`);
+    res.setHeader('Content-Disposition', `inline; filename="${fileData.name}"`);
+    res.setHeader('Content-Type', 'application/pdf');
+    return res.sendFile(fileData.path, (err) => {
+      if (err) {
+        console.error(`>>> [DEBUG-BACKEND] ERROR en sendFile:`, err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Error al enviar el archivo', error: err.message });
+        }
+      } else {
+        console.log(`>>> [DEBUG-BACKEND] viewReport | Archivo enviado exitosamente`);
+      }
+    });
+  }
+
   @Get(':periodo/:tipo')
   @ApiOperation({ summary: 'Obtener los detalles de un informe por periodo y tipo' })
   @ApiResponse({ status: 200, description: 'Detalles del informe o estructura vacía si no existe.' })
@@ -148,6 +187,7 @@ export class InformesController {
     @Param('tipo') tipo: string,
     @CurrentUser() user: any,
   ) {
+    console.log(`\n>>> [DEBUG-BACKEND] EJECUTANDO getDetalle | Periodo recibido: ${periodo}, Tipo recibido: ${tipo}`);
     const isCoordinator = user.rol === 'coordinador';
     return this.informesService.getDetalleReporte(user.sub, periodo, tipo, isCoordinator);
   }
@@ -202,18 +242,6 @@ export class InformesController {
     return this.informesService.cambiarEstadoReporte(periodo, tipo, estado, observacion, idUsuario);
   }
 
-  @Get(':id/download')
-  @ApiOperation({ summary: 'Descargar el archivo PDF de la última versión de un informe' })
-  @ApiResponse({ status: 200, description: 'Envío del archivo PDF.' })
-  @ApiResponse({ status: 404, description: 'Informe o archivo físico no encontrado.' })
-  async downloadReport(
-    @Param('id') id: number,
-    @Res() res: express.Response,
-  ) {
-    const fileData = await this.informesService.getReportFile(id);
-    return res.download(fileData.path, fileData.name);
-  }
-
   @Post()
   @ApiOperation({ summary: 'Crear un registro de informe básico' })
   create(@Body() createInformeDto: CreateInformeDto) {
@@ -244,6 +272,13 @@ export class InformesController {
   @ApiOperation({ summary: 'Actualizar un registro de informe básico' })
   update(@Param('id') id: string, @Body() updateInformeDto: UpdateInformeDto) {
     return this.informesService.update(+id, updateInformeDto);
+  }
+
+  @Delete(':id/version/last')
+  @ApiOperation({ summary: 'Eliminar la última versión de un informe' })
+  @ApiResponse({ status: 200, description: 'Última versión eliminada.' })
+  async deleteLastVersion(@Param('id') id: string) {
+    return this.informesService.deleteLastVersion(+id);
   }
 
   @Delete(':id')

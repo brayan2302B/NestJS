@@ -237,9 +237,12 @@ export class InformesService {
       archivo_ruta: file.path.replace(/\\/g, '/'),
       archivo_nombre_original: file.originalname,
       archivo_tamano_bytes: file.size,
-      estado: 'pendiente',
+      estado: 'borrador',
     });
     await this.versionRepository.save(version);
+
+    // Set report status to 'borrador' avoiding cascade validation issues
+    await this.informeRepository.update({ id_informe: informe.id_informe }, { estado: 'borrador' });
 
     // Reload and return
     return this.informeRepository.findOne({
@@ -280,14 +283,15 @@ export class InformesService {
       archivo_ruta: file.path.replace(/\\/g, '/'),
       archivo_nombre_original: file.originalname,
       archivo_tamano_bytes: file.size,
-      estado: 'pendiente',
+      estado: 'borrador',
     });
     await this.versionRepository.save(version);
 
-    // Reset report state to pending and clear old observations
-    informe.estado = 'pendiente';
-    informe.observacion = undefined;
-    await this.informeRepository.save(informe);
+    // Reset report state to borrador and clear old observations using update to avoid cascade issues
+    await this.informeRepository.update(
+      { id_informe: informe.id_informe },
+      { estado: 'borrador', observacion: undefined }
+    );
 
     return this.informeRepository.findOne({
       where: { id_informe: informe.id_informe },
@@ -374,6 +378,8 @@ export class InformesService {
       mappedEstado = 'validado';
     } else if (mappedEstado === 'rechazado' || mappedEstado === 'devuelto') {
       mappedEstado = 'devuelto';
+    } else if (mappedEstado === 'borrador') {
+      mappedEstado = 'borrador';
     } else {
       mappedEstado = 'pendiente';
     }
@@ -389,6 +395,68 @@ export class InformesService {
       latestVersion.estado = mappedEstado;
       latestVersion.observacion = observacion || undefined;
       await this.versionRepository.save(latestVersion);
+    }
+
+    return this.informeRepository.findOne({
+      where: { id_informe: report.id_informe },
+      relations: { periodo: true, usuario: true, versiones: true },
+    });
+  }
+
+  async deleteLastVersion(id: number) {
+    const report = await this.informeRepository.findOne({
+      where: { id_informe: id },
+      relations: { versiones: true },
+    });
+
+    if (!report) {
+      throw new NotFoundException(`Informe #${id} no encontrado`);
+    }
+
+    if (!report.versiones || report.versiones.length === 0) {
+      throw new BadRequestException(`El informe #${id} no tiene ninguna versión para eliminar`);
+    }
+
+    // Sort versions to find the latest
+    report.versiones.sort((a, b) => b.numero_version - a.numero_version);
+    const latestVersion = report.versiones[0];
+
+    // 1. Delete physical file
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(process.cwd(), latestVersion.archivo_ruta);
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`>>> [DEBUG-BACKEND] Archivo físico eliminado: ${filePath}`);
+      } else {
+        console.warn(`>>> [DEBUG-BACKEND] Archivo físico no encontrado al eliminar: ${filePath}`);
+      }
+    } catch (err: any) {
+      console.error(`>>> [DEBUG-BACKEND] Error al eliminar archivo físico:`, err);
+    }
+
+    // 2. Delete version record from database
+    await this.versionRepository.remove(latestVersion);
+    console.log(`>>> [DEBUG-BACKEND] Registro de versión V${latestVersion.numero_version} eliminado.`);
+
+    // 3. Update report state
+    const remainingVersions = report.versiones.filter(v => v.id_version !== latestVersion.id_version);
+    if (remainingVersions.length > 0) {
+      // Re-sort remaining to find the new latest version
+      remainingVersions.sort((a, b) => b.numero_version - a.numero_version);
+      const newLatest = remainingVersions[0];
+      report.estado = newLatest.estado;
+      report.observacion = newLatest.observacion || undefined;
+      await this.informeRepository.save(report);
+    } else {
+      // No versions left, delete the report completely (so instructor can start from scratch)
+      // Since cascade details could vary, we can delete GC/GF children first
+      await this.informeGcRepository.delete({ informe: { id_informe: report.id_informe } });
+      await this.informeGfRepository.delete({ informe: { id_informe: report.id_informe } });
+      await this.informeRepository.remove(report);
+      console.log(`>>> [DEBUG-BACKEND] Informe #${id} eliminado completo por no tener versiones.`);
+      return { id_informe: null, estado: 'No cargado', versiones: [] };
     }
 
     return this.informeRepository.findOne({
