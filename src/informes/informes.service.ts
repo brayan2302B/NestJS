@@ -15,6 +15,8 @@ import { Persona } from '../personas/entities/persona.entity';
 import { Version } from '../versiones/entities/version.entity';
 import { PeriodoCarga } from '../periodos-carga/entities/periodo-carga.entity';
 import { Contrato } from '../contratos/entities/contrato.entity';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
+
 
 @Injectable()
 export class InformesService {
@@ -37,6 +39,7 @@ export class InformesService {
     private readonly personaRepository: Repository<Persona>,
     @InjectRepository(Contrato)
     private readonly contratoRepository: Repository<Contrato>,
+    private readonly notificacionesService: NotificacionesService,
   ) {}
 
   // ── MÉTODOS DE INTEGRACIÓN CON EL FRONTEND ──
@@ -395,6 +398,28 @@ export class InformesService {
       latestVersion.estado = mappedEstado;
       latestVersion.observacion = observacion || undefined;
       await this.versionRepository.save(latestVersion);
+    }
+
+    // Disparar notificación automática al propietario del informe
+    if (report.usuario) {
+      const typeMap: Record<string, string> = {
+        'validado': 'success',
+        'devuelto': 'error',
+        'borrador': 'info',
+        'pendiente': 'warning',
+      };
+      const cleanType = typeMap[mappedEstado] || 'info';
+      
+      let message = `El estado de su informe ${report.tipo_informe} del período ${periodoStr} ha cambiado a: "${mappedEstado.toUpperCase()}"`;
+      if (observacion) {
+        message += `. Observación: "${observacion}"`;
+      }
+      
+      await this.notificacionesService.crear(
+        report.usuario.id_usuario,
+        message,
+        cleanType as any
+      );
     }
 
     return this.informeRepository.findOne({
