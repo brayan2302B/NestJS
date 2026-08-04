@@ -152,4 +152,54 @@ export class PersonasService {
       reset_token_expiry: null,
     } as any);
   }
+
+  // ── Preferencias de notificación ────────────────────────────────────────────
+  /** Devuelve las preferencias de notificación del usuario */
+  async getSettings(userId: number): Promise<Record<string, unknown>> {
+    const persona = await this.findOne(userId);
+    return persona.preferencias_notificaciones ?? {};
+  }
+
+  /** Actualiza (merge) las preferencias de notificación del usuario */
+  async updateSettings(userId: number, prefs: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const persona = await this.findOne(userId);
+    const merged = { ...(persona.preferencias_notificaciones ?? {}), ...prefs };
+    persona.preferencias_notificaciones = merged;
+    await this.personaRepository.save(persona);
+    return merged;
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // ── Firma Digital Base64 ─────────────────────────────────────────────────────
+  /**
+   * Decodifica una imagen en base64 y la guarda como .png en uploads/firmas/.
+   * Actualiza firma_digital_ruta y firma_digital_actualizada_at del usuario.
+   */
+  async saveSignatureBase64(userId: number, base64Data: string): Promise<string> {
+    // Eliminar el prefijo "data:image/png;base64," si viene incluido
+    const base64Clean = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Clean, 'base64');
+
+    // Construir la ruta del archivo
+    const { join } = await import('path');
+    const { existsSync, mkdirSync, writeFileSync } = await import('fs');
+    const signaturesDir = join(process.cwd(), 'uploads', 'firmas');
+    if (!existsSync(signaturesDir)) {
+      mkdirSync(signaturesDir, { recursive: true });
+    }
+    const fileName = `firma_${userId}_${Date.now()}.png`;
+    const filePath = join(signaturesDir, fileName);
+    writeFileSync(filePath, buffer);
+
+    const relativePath = `uploads/firmas/${fileName}`;
+
+    // Actualizar en BD
+    const persona = await this.findOne(userId);
+    persona.firma_digital_ruta = relativePath;
+    persona.firma_digital_actualizada_at = new Date();
+    await this.personaRepository.save(persona);
+
+    return relativePath;
+  }
+  // ────────────────────────────────────────────────────────────────────────────
 }

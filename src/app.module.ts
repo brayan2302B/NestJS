@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -18,6 +18,8 @@ import { ActividadesModule } from './actividades/actividades.module';
 import { EvidenciasModule } from './evidencias/evidencias.module';
 import { PeriodosCargaModule } from './periodos-carga/periodos-carga.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { TenantModule } from './common/tenant/tenant.module';
+import { TenantMiddleware } from './common/tenant/tenant.middleware';
 
 @Module({
   imports: [
@@ -53,6 +55,9 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
       },
       inject: [ConfigService],
     }),
+    // ── Módulo Multitenant (Global) ──────────────────────────────────────────
+    TenantModule,
+    // ────────────────────────────────────────────────────────────────────────
     AreasModule,
     AuthModule,
     ContratosModule,
@@ -72,4 +77,11 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // Aplicar TenantMiddleware globalmente para TODAS las rutas de la API
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(TenantMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

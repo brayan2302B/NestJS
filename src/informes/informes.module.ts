@@ -14,12 +14,14 @@ import { Version } from '../versiones/entities/version.entity';
 import { AuthModule } from '../auth/auth.module';
 import { PersonasModule } from '../personas/personas.module';
 import { InformeGf } from '../informe-gf/entities/informe-gf.entity';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Informe, InformeGc, InformeGf, Actividad, Evidencia, Persona, Contrato, PeriodoCarga, Version]),
     AuthModule,
     PersonasModule,
+    NotificacionesModule,
   ],
   controllers: [InformesController],
   providers: [InformesService, InformeGcValidationService],

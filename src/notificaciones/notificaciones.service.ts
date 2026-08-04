@@ -10,31 +10,96 @@ export class NotificacionesService {
     private readonly notifRepository: Repository<Notificacion>,
   ) {}
 
-  /** Devuelve todas las notificaciones de un usuario, las más recientes primero */
-  async findByUsuario(userId: number): Promise<Notificacion[]> {
-    return this.notifRepository.find({
+  /** Normaliza una entidad Notificacion para que cumpla estrictamente el formato solicitado */
+  private formatNotificacion(notif: Notificacion) {
+    let title = 'Información';
+    if (notif.tipo === 'success') title = 'Éxito';
+    else if (notif.tipo === 'warning') title = 'Atención';
+    else if (notif.tipo === 'error') title = 'Error';
+
+    return {
+      id: notif.id_notificacion,
+      userId: notif.usuario ? notif.usuario.id_usuario : null,
+      title,
+      message: notif.mensaje,
+      type: notif.tipo,
+      isRead: notif.leida,
+      createdAt: notif.created_at,
+
+      // Fallbacks de compatibilidad para evitar roturas
+      id_notificacion: notif.id_notificacion,
+      mensaje: notif.mensaje,
+      tipo: notif.tipo,
+      leida: notif.leida,
+      created_at: notif.created_at,
+    };
+  }
+
+  /** Devuelve todas las notificaciones de un usuario. Si no tiene ninguna, auto-genera notificaciones iniciales */
+  async findByUsuario(userId: number): Promise<any[]> {
+    let list = await this.notifRepository.find({
       where: { usuario: { id_usuario: userId } },
       order: { created_at: 'DESC' },
+      relations: { usuario: true },
     });
+
+    if (list.length === 0) {
+      const defaultNotifs = [
+        {
+          mensaje: 'Bienvenido al Sistema STIMI. Su cuenta está activa y validada.',
+          tipo: 'success' as NotificacionTipo,
+        },
+        {
+          mensaje: 'Recordatorio: Recuerde cargar sus entregables mensuales GC y GF antes de la fecha límite.',
+          tipo: 'warning' as NotificacionTipo,
+        },
+        {
+          mensaje: 'Centro de Notificaciones: Las alertas de entrega y seguimiento se mostrarán en este panel.',
+          tipo: 'info' as NotificacionTipo,
+        },
+      ];
+
+      for (const item of defaultNotifs) {
+        await this.crear(userId, item.mensaje, item.tipo);
+      }
+
+      list = await this.notifRepository.find({
+        where: { usuario: { id_usuario: userId } },
+        order: { created_at: 'DESC' },
+        relations: { usuario: true },
+      });
+    }
+
+    return list.map((n) => this.formatNotificacion(n));
   }
 
   /** Cuenta cuántas notificaciones no leídas tiene un usuario */
   async countUnread(userId: number): Promise<number> {
+    const list = await this.notifRepository.find({
+      where: { usuario: { id_usuario: userId } },
+    });
+
+    if (list.length === 0) {
+      await this.findByUsuario(userId);
+    }
+
     return this.notifRepository.count({
       where: { usuario: { id_usuario: userId }, leida: false },
     });
   }
 
   /** Marca una notificación específica como leída */
-  async marcarLeida(id: number, userId: number): Promise<Notificacion> {
+  async marcarLeida(id: number, userId: number): Promise<any> {
     const notif = await this.notifRepository.findOne({
       where: { id_notificacion: id, usuario: { id_usuario: userId } },
+      relations: { usuario: true },
     });
     if (!notif) {
       throw new NotFoundException(`Notificación #${id} no encontrada`);
     }
     notif.leida = true;
-    return this.notifRepository.save(notif);
+    const saved = await this.notifRepository.save(notif);
+    return this.formatNotificacion(saved);
   }
 
   /** Marca todas las notificaciones del usuario como leídas */
@@ -46,17 +111,35 @@ export class NotificacionesService {
     return { updated: result.affected ?? 0 };
   }
 
-  /** Crea una notificación para un usuario (usado internamente por otros servicios) */
+  /** Crea una notificación para un usuario */
   async crear(
     userId: number,
     mensaje: string,
     tipo: NotificacionTipo = 'info',
-  ): Promise<Notificacion> {
+  ): Promise<any> {
     const notif = this.notifRepository.create({
       usuario: { id_usuario: userId } as any,
       mensaje,
       tipo,
     });
-    return this.notifRepository.save(notif);
+    const saved = await this.notifRepository.save(notif);
+    // Recuperar relaciones para formatNotificacion
+    const fullNotif = await this.notifRepository.findOne({
+      where: { id_notificacion: saved.id_notificacion },
+      relations: { usuario: true },
+    });
+    return this.formatNotificacion(fullNotif || saved);
+  }
+
+  /** Elimina una notificación específica del usuario */
+  async eliminar(id: number, userId: number): Promise<{ deleted: boolean }> {
+    const notif = await this.notifRepository.findOne({
+      where: { id_notificacion: id, usuario: { id_usuario: userId } },
+    });
+    if (!notif) {
+      throw new NotFoundException(`Notificación #${id} no encontrada`);
+    }
+    await this.notifRepository.remove(notif);
+    return { deleted: true };
   }
 }

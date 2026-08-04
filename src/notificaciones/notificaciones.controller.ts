@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Patch,
+  Delete,
   Param,
   ParseIntPipe,
   UseGuards,
@@ -16,7 +17,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 @ApiTags('notificaciones')
 @ApiBearerAuth()
 @UseGuards(JwtGuard)
-@Controller('notificaciones')
+@Controller(['notificaciones', 'notifications'])
 export class NotificacionesController {
   constructor(private readonly notificacionesService: NotificacionesService) {}
 
@@ -35,7 +36,7 @@ export class NotificacionesController {
     return { count };
   }
 
-  @Patch(':id/leer')
+  @Patch([':id/leer', ':id/read'])
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Marcar una notificación específica como leída' })
   @ApiResponse({ status: 200, description: 'Notificación marcada como leída.' })
@@ -44,11 +45,20 @@ export class NotificacionesController {
     return this.notificacionesService.marcarLeida(id, user.sub);
   }
 
-  @Patch('leer-todas')
+  @Patch(['leer-todas', 'read-all'])
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Marcar todas las notificaciones del usuario como leídas' })
   @ApiResponse({ status: 200, description: 'Todas marcadas como leídas.' })
   marcarTodasLeidas(@CurrentUser() user: any) {
     return this.notificacionesService.marcarTodasLeidas(user.sub);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Eliminar una notificación específica del usuario' })
+  @ApiResponse({ status: 200, description: 'Notificación eliminada.' })
+  @ApiResponse({ status: 404, description: 'Notificación no encontrada.' })
+  eliminar(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: any) {
+    return this.notificacionesService.eliminar(id, user.sub);
   }
 }

@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Patch,
+  Put,
   Param,
   Delete,
   UseGuards,
@@ -11,6 +12,8 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { PersonasService } from './personas.service';
 import { CreatePersonaDto } from './dto/create-persona.dto';
@@ -88,6 +91,29 @@ export class PersonasController {
     return this.personasService.update(+id, updatePersonaDto);
   }
 
+  // ── Settings de preferencias de notificación ─────────────────────────────
+  @Get('me/settings')
+  @ApiBearerAuth()
+  @UseGuards(JwtGuard)
+  @ApiOperation({ summary: 'Obtener preferencias de notificación del usuario autenticado' })
+  @ApiResponse({ status: 200, description: 'Preferencias devueltas.' })
+  async getSettings(@CurrentUser() user: any) {
+    return this.personasService.getSettings(user.sub);
+  }
+
+  @Put('me/settings')
+  @ApiBearerAuth()
+  @UseGuards(JwtGuard)
+  @ApiOperation({ summary: 'Actualizar preferencias de notificación del usuario autenticado' })
+  @ApiResponse({ status: 200, description: 'Preferencias actualizadas.' })
+  async updateSettings(
+    @CurrentUser() user: any,
+    @Body() prefs: Record<string, unknown>,
+  ) {
+    return this.personasService.updateSettings(user.sub, prefs);
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   @Delete(':id')
   @ApiBearerAuth()
   @UseGuards(JwtGuard, RolesGuard)
@@ -134,6 +160,26 @@ export class PersonasController {
     const repo = (this.personasService as any).personaRepository;
     await repo.save(persona);
 
+    return {
+      success: true,
+      firma_digital_ruta: signaturePath,
+    };
+  }
+
+  @Post('me/firma-base64')
+  @ApiBearerAuth()
+  @UseGuards(JwtGuard)
+  @ApiOperation({ summary: 'Guardar firma digital proveniente del Canvas (Base64)' })
+  @ApiResponse({ status: 200, description: 'Firma Base64 guardada exitosamente.' })
+  @ApiResponse({ status: 400, description: 'Base64 invalido o faltante.' })
+  async uploadFirmaBase64(
+    @Body() body: { base64: string },
+    @CurrentUser() user: any,
+  ) {
+    if (!body.base64) {
+      throw new BadRequestException('El campo base64 es requerido');
+    }
+    const signaturePath = await this.personasService.saveSignatureBase64(user.sub, body.base64);
     return {
       success: true,
       firma_digital_ruta: signaturePath,

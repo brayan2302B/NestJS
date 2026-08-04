@@ -5,6 +5,7 @@ import { Novedad } from './entities/novedad.entity';
 import { CreateNovedadDto } from './dto/create-novedad.dto';
 import { UpdateNovedadDto } from './dto/update-novedad.dto';
 import { Version } from '../versiones/entities/version.entity';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 
 @Injectable()
 export class NovedadesService {
@@ -13,10 +14,18 @@ export class NovedadesService {
     private readonly novedadRepository: Repository<Novedad>,
     @InjectRepository(Version)
     private readonly versionRepository: Repository<Version>,
+    private readonly notificacionesService: NotificacionesService,
   ) {}
 
   async create(createNovedadDto: CreateNovedadDto) {
-    const version = await this.versionRepository.findOneBy({ id_version: createNovedadDto.fk_version });
+    const version = await this.versionRepository.findOne({
+      where: { id_version: createNovedadDto.fk_version },
+      relations: {
+        informe: {
+          usuario: true,
+        },
+      },
+    });
     if (!version) {
       throw new NotFoundException(`Versión #${createNovedadDto.fk_version} no encontrada`);
     }
@@ -27,7 +36,22 @@ export class NovedadesService {
       estado: createNovedadDto.estado || 'activo',
       version,
     });
-    return this.novedadRepository.save(novedad);
+    const savedNovedad = await this.novedadRepository.save(novedad);
+
+    // Disparar notificación automática al instructor del informe
+    if (version?.informe?.usuario) {
+      const userId = version.informe.usuario.id_usuario;
+      const cleanDesc = createNovedadDto.descripcion.length > 60
+        ? `${createNovedadDto.descripcion.substring(0, 57)}...`
+        : createNovedadDto.descripcion;
+      await this.notificacionesService.crear(
+        userId,
+        `Se ha registrado una novedad en su informe: "${cleanDesc}"`,
+        'warning',
+      );
+    }
+
+    return savedNovedad;
   }
 
   findAll() {
