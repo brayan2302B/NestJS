@@ -20,6 +20,7 @@ import { PeriodosCargaModule } from './periodos-carga/periodos-carga.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { TenantMiddleware } from './common/tenant/tenant.middleware';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { TenantMiddleware } from './common/tenant/tenant.middleware';
     EvidenciasModule,
     PeriodosCargaModule,
     NotificacionesModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
