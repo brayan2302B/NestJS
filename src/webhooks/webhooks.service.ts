@@ -9,6 +9,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { PDFParse } = require('pdf-parse');
+
 import { Persona } from '../personas/entities/persona.entity';
 import { Obligacione } from '../obligaciones/entities/obligacione.entity';
 import { InformesService } from '../informes/informes.service';
@@ -180,19 +183,36 @@ Instrucciones de comportamiento:
     const mes = partesPeriodo[0] ?? 'Desconocido';
     const anio = partesPeriodo[1] ?? String(new Date().getFullYear());
 
-    // 2. Leer el archivo PDF como base64
-    let base64Pdf: string;
+    // 2. Extraer texto del PDF con pdf-parse
+    let textoPdf: string;
     try {
       const buffer = fs.readFileSync(file.path);
-      base64Pdf = buffer.toString('base64');
-    } catch {
+      const parser = new PDFParse({ data: buffer });
+      const pdfData = await parser.getText();
+      textoPdf = pdfData.text ?? '';
+      await parser.destroy();
+      this.logger.log(
+        `[SubidaChat] PDF extraído: ${textoPdf.length} caracteres de '${file.originalname}'`,
+      );
+    } catch (parseErr: any) {
+      this.logger.error(`[SubidaChat] Error extrayendo texto del PDF: ${parseErr.message}`);
       throw new InternalServerErrorException(
-        'No se pudo leer el archivo subido. Intenta de nuevo.',
+        'No se pudo leer el contenido del PDF. Verifica que el archivo no esté protegido con contraseña.',
       );
     }
 
+    if (!textoPdf || textoPdf.trim().length < 50) {
+      throw new BadRequestException(
+        'El PDF no contiene texto legible. Asegúrate de que no sea una imagen escaneada sin OCR.',
+      );
+    }
+
+    // Limitar a 12.000 caracteres para no exceder tokens
+    const textoRecortado = textoPdf.slice(0, 12000);
+
     // 3. Construir el prompt según el tipo de informe
-    let prompt: string;
+    let systemPrompt: string;
+    let userPrompt: string;
 
     if (tipoInforme === 'GC') {
       // Obtener matriz de obligaciones del instructor
@@ -207,59 +227,81 @@ Instrucciones de comportamiento:
           ? obligaciones
               .map(
                 (o, i) =>
-                  `• OBL ${i + 1}: ${o.descripcion?.slice(0, 400) ?? 'Sin descripción'}`,
+                  `• OBL ${i + 1}: ${o.descripcion?.slice(0, 300) ?? 'Sin descripción'}`,
               )
               .join('\n')
-          : '• No se encontraron obligaciones contractuales en el sistema para este instructor.';
+          : '• Sin obligaciones contractuales registradas (se evaluará con criterio general GTH-F-062).';
 
-      prompt = `Eres Sera 🦅, revisora experta de informes GC del SENA.
-Contratista: ${cedula} | Período: ${mes} ${anio} | Formato esperado: GTH-F-062 V10
+      systemPrompt = `Eres Sera, revisora experta de informes GC del SENA (GTH-F-062 V10).
+Analiza el texto extraído del informe y responde con el reporte estructurado.
+Sé precisa y objetiva. Usa exactamente el formato solicitado.`;
 
-INSTRUCCIONES:
-Analiza el PDF del informe GC adjunto y revisa obligación por obligación (1 a 18).
-Para cada una indica: ✅ cumple / ⚠️ cumple parcialmente / ❌ no cumple / N/A.
+      userPrompt = `Revisa el siguiente informe GC.
+Contratista: ${cedula} | Período declarado: ${mes} ${anio}
 
-MATRIZ DE OBLIGACIONES (del contrato):
+MATRIZ DE OBLIGACIONES (del sistema):
 ${matrizObligaciones}
 
-FORMATO DEL REPORTE (usa exactamente este formato):
+TEXTO EXTRAÍDO DEL PDF:
+${textoRecortado}
+
+FORMATO DEL REPORTE (responde exactamente así):
 📋 *REPORTE DE REVISIÓN GC*
-Contratista: ${cedula} | Período: ${mes} ${anio}
+Contratista: ${cedula} | Período: ${mes} ${anio} | Archivo: ${file.originalname}
 
-*OBLIGACIONES (1 a N):*
-• Obl. X: [✅/⚠️/❌/N/A] breve descripción de lo encontrado
+*0. VERIFICACIÓN DE PERÍODO:*
+El documento debe corresponder al período declarado: ${mes} ${anio}.
+Busca fechas, encabezados o menciones de mes/año en el documento y confirma si coinciden.
+[✅ Período correcto: ${mes} ${anio} / ❌ Período incorrecto o no identificado → INCOMPLETO]
 
-*DATOS BÁSICOS:*
-[✅/⚠️/❌] Versión del formato · Fecha coherente · Datos del contratista · Firmas
+*1. DATOS BÁSICOS:*
+[✅/⚠️/❌] Versión formato · [✅/❌] Fecha coherente · [✅/❌] Datos contratista · [✅/❌] Firmas
+
+*2. OBLIGACIONES (1 a 18):*
+• Obl. 1: [✅/⚠️/❌/N/A] descripción breve
+• (una línea por cada obligación)
 
 *CONCLUSIÓN:*
 [✅ GC COMPLETO / ⚠️ GC CON OBSERVACIONES / ❌ GC INCOMPLETO]
 
-*OBSERVACIONES:* (solo si hay ⚠️ o ❌)
+*OBSERVACIONES:* (solo si hay ⚠️ o ❌, de lo contrario: "Ninguna")
 
 *ACCIONES REQUERIDAS:* (concretas o "Ninguna")`;
     } else {
       // GF
-      prompt = `Eres Sera 🦅, asistente del SENA especializada en revisión de GF (Gestión Financiera).
-Contratista: ${cedula} | Período: ${mes} ${anio}
+      systemPrompt = `Eres Sera, experta en revisión de informes GF (Gestión Financiera) del SENA.
+Analiza el texto extraído del informe y responde con el reporte estructurado.
+Sé precisa y objetiva. Usa exactamente el formato solicitado.`;
 
-INSTRUCCIONES DE REVISIÓN:
-Primero determina si es PRIMER PAGO, PAGO INTERMEDIO o ÚLTIMO PAGO basándote en el contenido del documento.
+      userPrompt = `Revisa el siguiente informe GF.
+Contratista: ${cedula} | Período declarado: ${mes} ${anio}
 
-DOCUMENTOS REQUERIDOS SEGÚN TIPO DE PAGO:
-PRIMER PAGO: 1) Documento "Sí Contratista", 2) Afiliación EPS, 3) Pensiones, 4) ARL, 5) RUD, 6) GRF-063-V4, 7) Planilla PILA, 8) Comprobante de pago
-PAGO INTERMEDIO: 1) Formato de liquidación GF, 2) Planilla PILA, 3) Comprobante de pago
-ÚLTIMO PAGO: igual al primero más documentos de desvinculación.
+TEXTO EXTRAÍDO DEL PDF:
+${textoRecortado}
+
+INSTRUCCIONES:
+Primero verifica que el período declarado (${mes} ${anio}) coincida con las fechas mencionadas en el documento.
+Si el período no coincide o no se identifica, marca como ❌ y considera INCOMPLETO.
+Luego determina si es PRIMER PAGO, PAGO INTERMEDIO o ÚNTIMO PAGO.
+
+DOCUMENTOS REQUERIDOS:
+• PRIMER PAGO: 1) Doc "Sí Contratista", 2) Afiliación EPS, 3) Pensiones, 4) ARL, 5) RUD, 6) GRF-063-V4, 7) Planilla PILA, 8) Comprobante pago
+• PAGO INTERMEDIO: 1) Formato liquidación GF firmado, 2) Planilla PILA, 3) Comprobante pago
+• ÚNTIMO PAGO: igual al primero + documentos de desvinculación
 
 FORMATO DEL REPORTE:
 📋 *REPORTE DE REVISIÓN GF*
-Contratista: ${cedula} | Período: ${mes} ${anio}
-Tipo de pago detectado: [PRIMER PAGO / PAGO INTERMEDIO / ÚLTIMO PAGO]
+Contratista: ${cedula} | Período: ${mes} ${anio} | Archivo: ${file.originalname}
+
+*0. VERIFICACIÓN DE PERÍODO:*
+[✅ Período correcto: ${mes} ${anio} / ❌ Período incorrecto o no identificado → INCOMPLETO]
+Tipo de pago detectado: [PRIMER PAGO / PAGO INTERMEDIO / ÚNTIMO PAGO]
 
 *RESULTADO POR DOCUMENTO:*
 [Lista numerada con ✅ / ⚠️ / N/A y observación breve]
 
-*COINCIDENCIA DE VALORES:* Planilla vs. Comprobante [✅/❌/⚠️]
+*COINCIDENCIA DE VALORES:*
+Planilla vs. Comprobante: [✅ Coinciden / ❌ No coinciden / ⚠️ No verificable]
 
 *CONCLUSIÓN:*
 [✅ GF COMPLETO / ⚠️ GF CON OBSERVACIONES / ❌ GF INCOMPLETO]
@@ -267,12 +309,10 @@ Tipo de pago detectado: [PRIMER PAGO / PAGO INTERMEDIO / ÚLTIMO PAGO]
 *ACCIONES REQUERIDAS:* (concretas o "Ninguna")`;
     }
 
-    // 4. Llamar a OpenAI Responses API (soporta PDFs nativamente)
+    // 4. Llamar a OpenAI Chat Completions con el texto extraído del PDF
     let mensajeIA: string;
     try {
-      const dataUri = `data:application/pdf;base64,${base64Pdf}`;
-
-      const response = await fetch('https://api.openai.com/v1/responses', {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -280,50 +320,29 @@ Tipo de pago detectado: [PRIMER PAGO / PAGO INTERMEDIO / ÚLTIMO PAGO]
         },
         body: JSON.stringify({
           model: 'gpt-4o',
-          input: [
-            {
-              role: 'user',
-              content: [
-                { type: 'input_text', text: prompt },
-                {
-                  type: 'input_file',
-                  filename: file.originalname,
-                  file_data: dataUri,
-                },
-              ],
-            },
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
           ],
-          max_output_tokens: 2000,
-          temperature: 0.3,
+          max_tokens: 2000,
+          temperature: 0.2,
         }),
       });
 
       if (!response.ok) {
         const errText = await response.text();
         this.logger.error(
-          `[SubidaChat] Error OpenAI Responses API: ${response.status} - ${errText}`,
+          `[SubidaChat] Error OpenAI Chat API: ${response.status} - ${errText}`,
         );
         throw new InternalServerErrorException(
-          'Error al analizar el PDF. Por favor, intenta de nuevo.',
+          'Error al analizar el PDF con IA. Por favor, intenta de nuevo.',
         );
       }
 
       const data = (await response.json()) as any;
-      mensajeIA = '❌ No se pudo analizar el informe.';
-
-      if (data?.output && Array.isArray(data.output)) {
-        for (const item of data.output) {
-          if (item.content && Array.isArray(item.content)) {
-            for (const part of item.content) {
-              if (part.type === 'output_text' && part.text) {
-                mensajeIA = part.text;
-                break;
-              }
-            }
-          }
-          if (mensajeIA !== '❌ No se pudo analizar el informe.') break;
-        }
-      }
+      mensajeIA =
+        data?.choices?.[0]?.message?.content?.trim() ??
+        '❌ No se pudo generar el análisis del informe.';
     } catch (error: any) {
       if (error instanceof InternalServerErrorException) throw error;
       this.logger.error(`[SubidaChat] Error inesperado en OpenAI: ${error.message}`);
@@ -353,32 +372,35 @@ Tipo de pago detectado: [PRIMER PAGO / PAGO INTERMEDIO / ÚLTIMO PAGO]
       estadoResultante = 'devuelto';
     }
 
-    // 6. Guardar el informe en la base de datos
+    // 6. Guardar el informe en la base de datos solo si el resultado NO es 'devuelto'
+    // (P1: un informe analizado como devuelto no debe registrarse en el sistema)
     let idInforme: number | undefined;
-    try {
-      const informeGuardado = await this.informesService.uploadReport(
-        usuario.id_usuario,
-        file,
-        periodo,
-        tipoInforme,
-      );
-
-      if (informeGuardado?.id_informe) {
-        idInforme = informeGuardado.id_informe;
-
-        // 7. Actualizar el estado del informe con el resultado de la IA
-        await this.informesService.cambiarEstadoReporte(
+    if (estadoResultante !== 'devuelto') {
+      try {
+        const informeGuardado = await this.informesService.uploadReport(
+          usuario.id_usuario,
+          file,
           periodo,
           tipoInforme,
-          estadoResultante,
-          mensajeIA.slice(0, 1000), // Truncar observaciones largas
-          usuario.id_usuario,
+        );
+
+        if (informeGuardado?.id_informe) {
+          idInforme = informeGuardado.id_informe;
+
+          // 7. Actualizar el estado del informe con el resultado de la IA
+          await this.informesService.cambiarEstadoReporte(
+            periodo,
+            tipoInforme,
+            estadoResultante,
+            mensajeIA.slice(0, 1000),
+            usuario.id_usuario,
+          );
+        }
+      } catch (dbErr: any) {
+        this.logger.warn(
+          `[SubidaChat] El informe se analizó pero no se pudo guardar en DB: ${dbErr.message}`,
         );
       }
-    } catch (dbErr: any) {
-      this.logger.warn(
-        `[SubidaChat] El informe se analizó pero no se pudo guardar en DB: ${dbErr.message}`,
-      );
     }
 
     this.logger.log(

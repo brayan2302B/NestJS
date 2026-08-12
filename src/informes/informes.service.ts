@@ -189,7 +189,13 @@ export class InformesService {
     });
 
     if (informe) {
-      // If it exists, we treat it as uploading a new version
+      // If the report is already validated, block any new upload
+      if (informe.estado === 'validado') {
+        throw new BadRequestException(
+          `El informe ${tipoInforme} del período ${periodoStr} ya fue validado y no puede recibir nuevas versiones.`,
+        );
+      }
+      // If it exists but not validated, treat it as uploading a new version
       return this.uploadNuevaVersion(idUsuario, file, periodoStr, tipo);
     }
 
@@ -270,6 +276,13 @@ export class InformesService {
     if (!informe) {
       // If it doesn't exist, create it from scratch
       return this.uploadReport(idUsuario, file, periodoStr, tipo);
+    }
+
+    // Block uploading a new version if the current report is already validated
+    if (informe.estado === 'validado') {
+      throw new BadRequestException(
+        `El informe ${tipoInforme} del período ${periodoStr} ya fue validado y no puede recibir nuevas versiones.`,
+      );
     }
 
     // Determine new version number
@@ -372,9 +385,68 @@ export class InformesService {
     });
 
     if (!report) {
-      throw new NotFoundException(`Informe de tipo ${tipoInforme} para el periodo ${periodoStr} no encontrado`);
+      // ── UPSERT: crear el informe si no existe (bot puede registrarlo directamente) ──
+      if (!idUsuario) {
+        throw new NotFoundException(`Informe de tipo ${tipoInforme} para el periodo ${periodoStr} no encontrado`);
+      }
+      const persona = await this.personaRepository.findOne({
+        where: { id_usuario: idUsuario },
+        relations: { area: true, rol: true },
+      });
+      if (!persona) {
+        throw new NotFoundException(`Usuario con id ${idUsuario} no encontrado`);
+      }
+      const newInforme = this.informeRepository.create({
+        usuario: persona,
+        periodo: periodo,
+        tipo_informe: tipoInforme,
+        estado: 'pendiente',
+        firmado: false,
+      });
+      const saved = await this.informeRepository.save(newInforme);
+
+      // Crear sub-tabla GC o GF
+      if (tipoInforme === 'GC') {
+        let contrato = await this.contratoRepository.findOne({
+          where: { usuario: { id_usuario: idUsuario }, estado: 'activo' },
+        });
+        if (!contrato) {
+          contrato = this.contratoRepository.create({
+            usuario: persona,
+            fecha_inicio: new Date(new Date().getFullYear(), 0, 1),
+            fecha_fin: new Date(new Date().getFullYear(), 11, 31),
+            estado: 'activo',
+          });
+          await this.contratoRepository.save(contrato);
+        }
+        await this.informeGcRepository.save(
+          this.informeGcRepository.create({ informe: saved, contrato, version_formato: 'GTH-F-062 V10' }),
+        );
+      } else {
+        await this.informeGfRepository.save(
+          this.informeGfRepository.create({ informe: saved, version_formato: 'GF-F-001 V2', valor_total: 0 }),
+        );
+      }
+
+      // Re-fetch with relations so the rest of the method can continue normally
+      const newReport = await this.informeRepository.findOne({
+        where: { id_informe: saved.id_informe },
+        relations: { versiones: true, usuario: true, periodo: true },
+      });
+      // Fall through: the code below will update estado/observacion on newReport
+      return this.updateInformeEstado(newReport!, estado, observacion, periodoStr);
     }
 
+    // Delegate to shared helper
+    return this.updateInformeEstado(report, estado, observacion, periodoStr);
+  }
+
+  private async updateInformeEstado(
+    report: Informe,
+    estado: string,
+    observacion: string | undefined,
+    periodoStr: string,
+  ) {
     // Map state strings to match database standard
     let mappedEstado = estado.toLowerCase();
     if (mappedEstado === 'aprobado' || mappedEstado === 'validado') {
@@ -400,7 +472,7 @@ export class InformesService {
       await this.versionRepository.save(latestVersion);
     }
 
-    // Disparar notificación automática al propietario del informe
+    // Disparar notificación automática al propietario del informe (respetando sus preferencias)
     if (report.usuario) {
       const typeMap: Record<string, string> = {
         'validado': 'success',
@@ -409,17 +481,30 @@ export class InformesService {
         'pendiente': 'warning',
       };
       const cleanType = typeMap[mappedEstado] || 'info';
-      
-      let message = `El estado de su informe ${report.tipo_informe} del período ${periodoStr} ha cambiado a: "${mappedEstado.toUpperCase()}"`;
-      if (observacion) {
-        message += `. Observación: "${observacion}"`;
+
+      // Leer preferencias del usuario y verificar si este tipo de notificación está habilitado
+      const prefs: Record<string, unknown> = (report.usuario as any).preferencias_notificaciones ?? {};
+      const flagMap: Record<string, string> = {
+        'validado': 'notif_aprobacion',
+        'devuelto': 'notif_aprobacion',
+        'pendiente': 'notif_nuevos',
+        'borrador': 'notif_pendientes',
+      };
+      const prefKey = flagMap[mappedEstado];
+      // Only skip if the preference is explicitly set to false
+      const notifHabilitada = prefKey ? prefs[prefKey] !== false : true;
+
+      if (notifHabilitada) {
+        let message = `El estado de su informe ${report.tipo_informe} del período ${periodoStr} ha cambiado a: "${mappedEstado.toUpperCase()}"`;
+        if (observacion) {
+          message += `. Observación: "${observacion}"`;
+        }
+        await this.notificacionesService.crear(
+          report.usuario.id_usuario,
+          message,
+          cleanType as any
+        );
       }
-      
-      await this.notificacionesService.crear(
-        report.usuario.id_usuario,
-        message,
-        cleanType as any
-      );
     }
 
     return this.informeRepository.findOne({
@@ -427,6 +512,7 @@ export class InformesService {
       relations: { periodo: true, usuario: true, versiones: true },
     });
   }
+
 
   async deleteLastVersion(id: number) {
     const report = await this.informeRepository.findOne({
@@ -504,9 +590,14 @@ export class InformesService {
     const anio = parseInt(match[2]);
 
     const mesesMap: Record<string, number> = {
+      // Nombres completos
       enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
       julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+      // Abreviaturas de 3 letras (como las usa n8n con los nombres de archivo)
+      ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6,
+      jul: 7, ago: 8, sep: 9, oct: 10, nov: 11, dic: 12,
     };
+
 
     const mes = mesesMap[mesStr];
     if (!mes) {
