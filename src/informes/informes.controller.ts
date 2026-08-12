@@ -148,7 +148,6 @@ export class InformesController {
     @Param('id') id: number,
     @Res() res: express.Response,
   ) {
-    console.log(`\n>>> [DEBUG-BACKEND] EJECUTANDO downloadReport | ID recibido: ${id} (tipo: ${typeof id})`);
     const fileData = await this.informesService.getReportFile(id);
     return res.download(fileData.path, fileData.name);
   }
@@ -161,20 +160,15 @@ export class InformesController {
     @Param('id') id: number,
     @Res() res: express.Response,
   ) {
-    console.log(`\n>>> [DEBUG-BACKEND] EJECUTANDO viewReport | ID recibido: ${id} (tipo: ${typeof id})`);
     const fileData = await this.informesService.getReportFile(id);
-    console.log(`>>> [DEBUG-BACKEND] viewReport | Ruta del archivo: ${fileData.path}`);
-    console.log(`>>> [DEBUG-BACKEND] viewReport | Nombre del archivo: ${fileData.name}`);
     res.setHeader('Content-Disposition', `inline; filename="${fileData.name}"`);
     res.setHeader('Content-Type', 'application/pdf');
     return res.sendFile(fileData.path, (err) => {
       if (err) {
-        console.error(`>>> [DEBUG-BACKEND] ERROR en sendFile:`, err);
+        console.error('[BACKEND] Error al enviar el archivo PDF:', err.message);
         if (!res.headersSent) {
           res.status(500).json({ message: 'Error al enviar el archivo', error: err.message });
         }
-      } else {
-        console.log(`>>> [DEBUG-BACKEND] viewReport | Archivo enviado exitosamente`);
       }
     });
   }

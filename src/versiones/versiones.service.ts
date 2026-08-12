@@ -5,6 +5,8 @@ import { Version } from './entities/version.entity';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { UpdateVersionDto } from './dto/update-version.dto';
 import { Informe } from '../informes/entities/informe.entity';
+import { join } from 'path';
+import { existsSync } from 'fs';
 
 @Injectable()
 export class VersionesService {
@@ -121,5 +123,23 @@ export class VersionesService {
     if (version.informe?.usuario?.id_usuario !== userId) {
       throw new ForbiddenException('No tiene permisos para acceder a esta versión');
     }
+  }
+
+  /** Retorna la ruta absoluta y el nombre original de una versión específica para servir el PDF */
+  async getVersionFile(id: number): Promise<{ path: string; name: string }> {
+    const version = await this.versionRepository.findOne({
+      where: { id_version: id },
+    });
+    if (!version) {
+      throw new NotFoundException(`Versión #${id} no encontrada`);
+    }
+    const filePath = join(process.cwd(), version.archivo_ruta);
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('El archivo físico de esta versión no existe en el servidor');
+    }
+    return {
+      path: filePath,
+      name: version.archivo_nombre_original || `version-${id}.pdf`,
+    };
   }
 }

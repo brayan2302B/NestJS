@@ -7,7 +7,9 @@ import {
   Param,
   Delete,
   UseGuards,
+  Res,
 } from '@nestjs/common';
+import * as express from 'express';
 import { VersionesService } from './versiones.service';
 import { CreateVersionDto } from './dto/create-version.dto';
 import { UpdateVersionDto } from './dto/update-version.dto';
@@ -68,5 +70,25 @@ export class VersionesController {
   @ApiResponse({ status: 403, description: 'Acceso prohibido.' })
   remove(@Param('id') id: string, @CurrentUser() user: any) {
     return this.versionesService.remove(+id, user.sub, user.rol);
+  }
+
+  @Get(':id/view')
+  @ApiOperation({ summary: 'Ver el PDF de una versión específica de un informe' })
+  @ApiResponse({ status: 200, description: 'Archivo PDF de la versión.' })
+  @ApiResponse({ status: 404, description: 'Versión o archivo no encontrado.' })
+  async viewVersion(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Res() res: express.Response,
+  ) {
+    await this.versionesService.checkOwnership(+id, user.sub, user.rol);
+    const fileData = await this.versionesService.getVersionFile(+id);
+    res.setHeader('Content-Disposition', `inline; filename="${fileData.name}"`);
+    res.setHeader('Content-Type', 'application/pdf');
+    return res.sendFile(fileData.path, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ message: 'Error al enviar el archivo', error: err.message });
+      }
+    });
   }
 }
