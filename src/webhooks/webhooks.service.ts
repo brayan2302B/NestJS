@@ -9,8 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PDFParse } = require('pdf-parse');
+// pdf-parse eliminado, ahora n8n se encarga
 
 import { Persona } from '../personas/entities/persona.entity';
 import { Obligacione } from '../obligaciones/entities/obligacione.entity';
@@ -20,6 +19,7 @@ import { AsistenteChatDto } from './dto/asistente-chat.dto';
 import { GuardarHistorialDto } from './dto/guardar-historial.dto';
 import { ChatUploadDto } from './dto/chat-upload.dto';
 import { HistorialConversacion } from './entities/historial-conversacion.entity';
+import { N8nService } from '../n8n/n8n.service';
 
 @Injectable()
 export class WebhooksService {
@@ -34,6 +34,7 @@ export class WebhooksService {
     private readonly obligacionesRepository: Repository<Obligacione>,
     private readonly informesService: InformesService,
     private readonly configService: ConfigService,
+    private readonly n8nService: N8nService,
   ) {}
 
   // ── 1. Procesamiento de revisión del bot Henry (n8n → NestJS) ───────────────
@@ -158,10 +159,12 @@ Instrucciones de comportamiento:
       throw new BadRequestException('Archivo PDF requerido.');
     }
 
-    const openaiKey = this.configService.get<string>('OPENAI_API_KEY');
-    if (!openaiKey) {
+    const n8nWebhookUrl = this.configService.get<string>('N8N_WEBHOOK_VALIDAR');
+    const n8nWebhookKey = this.configService.get<string>('N8N_WEBHOOK_VALIDAR_KEY');
+
+    if (!n8nWebhookUrl) {
       throw new InternalServerErrorException(
-        'El servicio de IA no está configurado. Contacta al administrador.',
+        'El webhook de validación de n8n no está configurado. Contacta al administrador.',
       );
     }
 
@@ -174,202 +177,140 @@ Instrucciones de comportamiento:
       throw new NotFoundException('Usuario no encontrado en el sistema.');
     }
 
-    const cedula = usuario.numero_documento;
-    const tipoInforme = dto.tipo_informe.toUpperCase();
-    const periodo = dto.periodo;
+    let cedula = usuario.numero_documento;
+    let tipoInforme = dto.tipo_informe?.toUpperCase() || 'GC';
+    const periodo = dto.periodo || '';
 
-    // Parsear el periodo: "Julio 2026" → mes="Julio", anio="2026"
+    // Parsear el periodo original como fallback: "Julio 2026" → mes="Julio", anio="2026"
     const partesPeriodo = periodo.trim().split(' ');
-    const mes = partesPeriodo[0] ?? 'Desconocido';
-    const anio = partesPeriodo[1] ?? String(new Date().getFullYear());
+    let mes = partesPeriodo[0] ?? 'Desconocido';
+    let anio = partesPeriodo[1] ?? String(new Date().getFullYear());
 
-    // 2. Extraer texto del PDF con pdf-parse
-    let textoPdf: string;
+    // Detectar datos desde el nombre del archivo
+    if (file && file.originalname) {
+      const fileNameUpper = file.originalname.toUpperCase();
+      
+      if (fileNameUpper.startsWith('GF_')) {
+        tipoInforme = 'GF';
+      } else if (fileNameUpper.startsWith('GC_')) {
+        tipoInforme = 'GC';
+      }
+
+      // Intentar extraer cédula, mes y año del nombre (ej: GF_123456_MAYO_2026.pdf)
+      const baseName = fileNameUpper.replace(/\.PDF$/, '');
+      const parts = baseName.split('_');
+
+      if (parts.length >= 4 && (parts[0] === 'GC' || parts[0] === 'GF')) {
+        // Cédula suele ser el segundo elemento
+        if (/^\d+$/.test(parts[1])) {
+          cedula = parts[1];
+        }
+        
+        // Año y Mes suelen ser los últimos dos elementos
+        const possibleAnio = parts[parts.length - 1];
+        const possibleMes = parts[parts.length - 2];
+        
+        if (/^\d{4}$/.test(possibleAnio)) {
+          anio = possibleAnio;
+          mes = possibleMes;
+        }
+      }
+    }
+
+    // 2. Leer archivo PDF y convertir a Base64
+    let pdfBase64: string;
     try {
       const buffer = fs.readFileSync(file.path);
-      const parser = new PDFParse({ data: buffer });
-      const pdfData = await parser.getText();
-      textoPdf = pdfData.text ?? '';
-      await parser.destroy();
-      this.logger.log(
-        `[SubidaChat] PDF extraído: ${textoPdf.length} caracteres de '${file.originalname}'`,
-      );
-    } catch (parseErr: any) {
-      this.logger.error(`[SubidaChat] Error extrayendo texto del PDF: ${parseErr.message}`);
-      throw new InternalServerErrorException(
-        'No se pudo leer el contenido del PDF. Verifica que el archivo no esté protegido con contraseña.',
-      );
+      pdfBase64 = buffer.toString('base64');
+    } catch (err: any) {
+      this.logger.error(`[SubidaChat] Error leyendo el PDF temporal: ${err.message}`);
+      throw new InternalServerErrorException('Error al procesar el archivo subido.');
     }
 
-    if (!textoPdf || textoPdf.trim().length < 50) {
-      throw new BadRequestException(
-        'El PDF no contiene texto legible. Asegúrate de que no sea una imagen escaneada sin OCR.',
-      );
-    }
-
-    // Limitar a 12.000 caracteres para no exceder tokens
-    const textoRecortado = textoPdf.slice(0, 12000);
-
-    // 3. Construir el prompt según el tipo de informe
-    let systemPrompt: string;
-    let userPrompt: string;
-
-    if (tipoInforme === 'GC') {
-      // Obtener matriz de obligaciones del instructor
-      const obligaciones = await this.obligacionesRepository.find({
-        where: { contrato: { usuario: { id_usuario: usuario.id_usuario } } },
-        relations: { contrato: true },
-        order: { id_obligacion: 'ASC' },
-      });
-
-      const matrizObligaciones =
-        obligaciones.length > 0
-          ? obligaciones
-              .map(
-                (o, i) =>
-                  `• OBL ${i + 1}: ${o.descripcion?.slice(0, 300) ?? 'Sin descripción'}`,
-              )
-              .join('\n')
-          : '• Sin obligaciones contractuales registradas (se evaluará con criterio general GTH-F-062).';
-
-      systemPrompt = `Eres Sera, revisora experta de informes GC del SENA (GTH-F-062 V10).
-Analiza el texto extraído del informe y responde con el reporte estructurado.
-Sé precisa y objetiva. Usa exactamente el formato solicitado.`;
-
-      userPrompt = `Revisa el siguiente informe GC.
-Contratista: ${cedula} | Período declarado: ${mes} ${anio}
-
-MATRIZ DE OBLIGACIONES (del sistema):
-${matrizObligaciones}
-
-TEXTO EXTRAÍDO DEL PDF:
-${textoRecortado}
-
-FORMATO DEL REPORTE (responde exactamente así):
-📋 *REPORTE DE REVISIÓN GC*
-Contratista: ${cedula} | Período: ${mes} ${anio} | Archivo: ${file.originalname}
-
-*0. VERIFICACIÓN DE PERÍODO:*
-El documento debe corresponder al período declarado: ${mes} ${anio}.
-Busca fechas, encabezados o menciones de mes/año en el documento y confirma si coinciden.
-[✅ Período correcto: ${mes} ${anio} / ❌ Período incorrecto o no identificado → INCOMPLETO]
-
-*1. DATOS BÁSICOS:*
-[✅/⚠️/❌] Versión formato · [✅/❌] Fecha coherente · [✅/❌] Datos contratista · [✅/❌] Firmas
-
-*2. OBLIGACIONES (1 a 18):*
-• Obl. 1: [✅/⚠️/❌/N/A] descripción breve
-• (una línea por cada obligación)
-
-*CONCLUSIÓN:*
-[✅ GC COMPLETO / ⚠️ GC CON OBSERVACIONES / ❌ GC INCOMPLETO]
-
-*OBSERVACIONES:* (solo si hay ⚠️ o ❌, de lo contrario: "Ninguna")
-
-*ACCIONES REQUERIDAS:* (concretas o "Ninguna")`;
-    } else {
-      // GF
-      systemPrompt = `Eres Sera, experta en revisión de informes GF (Gestión Financiera) del SENA.
-Analiza el texto extraído del informe y responde con el reporte estructurado.
-Sé precisa y objetiva. Usa exactamente el formato solicitado.`;
-
-      userPrompt = `Revisa el siguiente informe GF.
-Contratista: ${cedula} | Período declarado: ${mes} ${anio}
-
-TEXTO EXTRAÍDO DEL PDF:
-${textoRecortado}
-
-INSTRUCCIONES:
-Primero verifica que el período declarado (${mes} ${anio}) coincida con las fechas mencionadas en el documento.
-Si el período no coincide o no se identifica, marca como ❌ y considera INCOMPLETO.
-Luego determina si es PRIMER PAGO, PAGO INTERMEDIO o ÚNTIMO PAGO.
-
-DOCUMENTOS REQUERIDOS:
-• PRIMER PAGO: 1) Doc "Sí Contratista", 2) Afiliación EPS, 3) Pensiones, 4) ARL, 5) RUD, 6) GRF-063-V4, 7) Planilla PILA, 8) Comprobante pago
-• PAGO INTERMEDIO: 1) Formato liquidación GF firmado, 2) Planilla PILA, 3) Comprobante pago
-• ÚNTIMO PAGO: igual al primero + documentos de desvinculación
-
-FORMATO DEL REPORTE:
-📋 *REPORTE DE REVISIÓN GF*
-Contratista: ${cedula} | Período: ${mes} ${anio} | Archivo: ${file.originalname}
-
-*0. VERIFICACIÓN DE PERÍODO:*
-[✅ Período correcto: ${mes} ${anio} / ❌ Período incorrecto o no identificado → INCOMPLETO]
-Tipo de pago detectado: [PRIMER PAGO / PAGO INTERMEDIO / ÚNTIMO PAGO]
-
-*RESULTADO POR DOCUMENTO:*
-[Lista numerada con ✅ / ⚠️ / N/A y observación breve]
-
-*COINCIDENCIA DE VALORES:*
-Planilla vs. Comprobante: [✅ Coinciden / ❌ No coinciden / ⚠️ No verificable]
-
-*CONCLUSIÓN:*
-[✅ GF COMPLETO / ⚠️ GF CON OBSERVACIONES / ❌ GF INCOMPLETO]
-
-*ACCIONES REQUERIDAS:* (concretas o "Ninguna")`;
-    }
-
-    // 4. Llamar a OpenAI Chat Completions con el texto extraído del PDF
+    // 3. Llamar al webhook de n8n
     let mensajeIA: string;
+    let estadoIA: string | undefined;
+
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      this.logger.log(`[SubidaChat] Enviando informe a n8n para validación: ${file.originalname}`);
+      const payload = {
+        tipo_informe: tipoInforme,
+        cedula,
+        mes,
+        anio,
+        fileName: file.originalname,
+        pdfBase64,
+        origen: 'pagina_web'
+      };
+
+      // Timeout manual de 180 segundos (3 minutos) para procesos pesados de IA en n8n
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 180000);
+
+      const response = await fetch(n8nWebhookUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${openaiKey}`,
+          ...(n8nWebhookKey && { 'x-webhook-key': n8nWebhookKey, 'Authorization': n8nWebhookKey }),
         },
-        body: JSON.stringify({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          max_tokens: 2000,
-          temperature: 0.2,
-        }),
+        body: JSON.stringify(payload),
+        signal: controller.signal,
       });
 
+      clearTimeout(timeout);
+
       if (!response.ok) {
-        const errText = await response.text();
-        this.logger.error(
-          `[SubidaChat] Error OpenAI Chat API: ${response.status} - ${errText}`,
-        );
+        const errText = await response.text().catch(() => '');
+        this.logger.error(`[SubidaChat] Error webhook n8n: ${response.status} - ${errText}`);
         throw new InternalServerErrorException(
-          'Error al analizar el PDF con IA. Por favor, intenta de nuevo.',
+          'Error en el servicio de validación (n8n). Por favor, intenta de nuevo más tarde.',
         );
       }
 
       const data = (await response.json()) as any;
-      mensajeIA =
-        data?.choices?.[0]?.message?.content?.trim() ??
-        '❌ No se pudo generar el análisis del informe.';
+      mensajeIA = data?.mensaje ?? data?.respuesta ?? data?.observacion ?? '';
+      estadoIA = data?.estado;
+
+      if (!mensajeIA) {
+         mensajeIA = typeof data === 'string' ? data : JSON.stringify(data);
+      }
     } catch (error: any) {
       if (error instanceof InternalServerErrorException) throw error;
-      this.logger.error(`[SubidaChat] Error inesperado en OpenAI: ${error.message}`);
+      if (error.name === 'AbortError') {
+         this.logger.error(`[SubidaChat] Timeout esperando a n8n`);
+         throw new InternalServerErrorException('La validación está tomando demasiado tiempo. Intenta de nuevo.');
+      }
+      this.logger.error(`[SubidaChat] Error inesperado llamando a n8n: ${error.message}`);
       throw new InternalServerErrorException(
-        'Error al comunicarse con el servicio de IA. Intenta de nuevo.',
+        'No se pudo conectar con el motor de validación. Verifica tu conexión e intenta de nuevo.',
       );
     }
 
     // 5. Determinar el estado a partir de la respuesta de la IA
-    const textoUpper = mensajeIA.toUpperCase();
+    // 4. Determinar el estado a partir de la respuesta de la IA (si no viene explícito)
     let estadoResultante: 'validado' | 'devuelto' | 'pendiente' = 'pendiente';
 
-    if (
-      textoUpper.includes('GC COMPLETO') ||
-      textoUpper.includes('GF COMPLETO') ||
-      textoUpper.includes('✅ GC') ||
-      textoUpper.includes('✅ GF')
-    ) {
-      estadoResultante = 'validado';
-    } else if (
-      textoUpper.includes('GC INCOMPLETO') ||
-      textoUpper.includes('GF INCOMPLETO') ||
-      textoUpper.includes('ACCIONES REQUERIDAS') ||
-      textoUpper.includes('❌ GC') ||
-      textoUpper.includes('❌ GF')
-    ) {
-      estadoResultante = 'devuelto';
+    if (estadoIA && ['validado', 'devuelto', 'pendiente'].includes(estadoIA.toLowerCase())) {
+      estadoResultante = estadoIA.toLowerCase() as 'validado' | 'devuelto' | 'pendiente';
+    } else {
+      // Fallback a lógica textual en caso de que n8n no devuelva el estado explícitamente
+      const textoUpper = mensajeIA.toUpperCase();
+      if (
+        textoUpper.includes('GC COMPLETO') ||
+        textoUpper.includes('GF COMPLETO') ||
+        textoUpper.includes('✅ GC') ||
+        textoUpper.includes('✅ GF')
+      ) {
+        estadoResultante = 'validado';
+      } else if (
+        textoUpper.includes('GC INCOMPLETO') ||
+        textoUpper.includes('GF INCOMPLETO') ||
+        textoUpper.includes('ACCIONES REQUERIDAS') ||
+        textoUpper.includes('❌ GC') ||
+        textoUpper.includes('❌ GF')
+      ) {
+        estadoResultante = 'devuelto';
+      }
     }
 
     // 6. Guardar el informe en la base de datos solo si el resultado NO es 'devuelto'
@@ -406,6 +347,17 @@ Planilla vs. Comprobante: [✅ Coinciden / ❌ No coinciden / ⚠️ No verifica
     this.logger.log(
       `[SubidaChat] Análisis completado: ${tipoInforme} ${periodo} | Estado: ${estadoResultante} | Usuario: ${cedula}`,
     );
+
+    // Notificar a n8n el resultado de la validación desde la página web
+    this.n8nService.notifyAction('informe_validado_web', {
+      cedula,
+      periodo,
+      tipo_informe: tipoInforme,
+      estado: estadoResultante,
+      observacion: mensajeIA.slice(0, 1000),
+      usuarioId: usuario.id_usuario,
+      origen: 'pagina_web',
+    });
 
     return {
       respuesta: mensajeIA,

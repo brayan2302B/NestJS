@@ -2,12 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notificacion, NotificacionTipo } from './entities/notificacion.entity';
+import { MailService } from '../mail/mail.service';
+import { Persona } from '../personas/entities/persona.entity';
 
 @Injectable()
 export class NotificacionesService {
   constructor(
     @InjectRepository(Notificacion)
     private readonly notifRepository: Repository<Notificacion>,
+    private readonly mailService: MailService,
+    @InjectRepository(Persona)
+    private readonly personaRepository: Repository<Persona>,
   ) {}
 
   /** Normaliza una entidad Notificacion para que cumpla estrictamente el formato solicitado */
@@ -128,6 +133,26 @@ export class NotificacionesService {
       where: { id_notificacion: saved.id_notificacion },
       relations: { usuario: true },
     });
+
+    // Enviar correo electrónico si está habilitado en las preferencias del usuario
+    try {
+      const user = await this.personaRepository.findOne({ where: { id_usuario: userId } });
+      if (user && user.correo) {
+        const prefs: any = user.preferencias_notificaciones ?? {};
+        if (prefs.notif_correo !== false) {
+          let title = 'Información';
+          if (tipo === 'success') title = 'Éxito';
+          else if (tipo === 'warning') title = 'Atención';
+          else if (tipo === 'error') title = 'Error';
+
+          const subject = `🔔 [Stimi] Nueva notificación: ${title}`;
+          await this.mailService.sendNotificationEmail(user.correo, subject, mensaje, tipo);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error al enviar correo de notificación:', err?.message || err);
+    }
+
     return this.formatNotificacion(fullNotif || saved);
   }
 
