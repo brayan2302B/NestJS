@@ -72,4 +72,65 @@ export class MailService {
 
     this.logger.log(`Password reset email sent to ${to}`);
   }
+
+  async sendNotificationEmail(to: string, subject: string, message: string, type: string = 'info'): Promise<void> {
+    const fromName = this.configService.get<string>('MAIL_FROM_NAME', 'Stimi');
+    const fromUser = this.configService.get<string>('MAIL_USER');
+
+    const typeIcons: Record<string, string> = {
+      success: '✅',
+      warning: '⚠️',
+      error: '❌',
+      info: 'ℹ️',
+    };
+    const icon = typeIcons[type] || '🔔';
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          body { font-family: Arial, sans-serif; background: #f4f4f7; margin: 0; padding: 0; }
+          .wrapper { max-width: 520px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+          .header { background: #39A900; padding: 32px 24px; text-align: center; }
+          .header h1 { color: #fff; margin: 0; font-size: 22px; letter-spacing: 1px; }
+          .body { padding: 32px 28px; color: #333; }
+          .body p { font-size: 15px; line-height: 1.6; }
+          .msg-box { background: #f9f9fb; border-left: 4px solid #39A900; padding: 16px; margin: 24px 0; border-radius: 4px; }
+          .msg-box p { margin: 0; font-size: 14px; color: #444; }
+          .footer { background: #f4f4f7; padding: 16px 24px; text-align: center; font-size: 12px; color: #888; }
+        </style>
+      </head>
+      <body>
+        <div class="wrapper">
+          <div class="header">
+            <h1>${icon} Nueva Notificación — Stimi</h1>
+          </div>
+          <div class="body">
+            <p>Hola,</p>
+            <p>Tienes una nueva notificación en la plataforma <strong>Stimi (SENA)</strong>:</p>
+            <div class="msg-box">
+              <p>${message}</p>
+            </div>
+            <p>Puedes acceder a la plataforma para ver más detalles.</p>
+            <p>Saludos,<br/>El equipo de Stimi SENA</p>
+          </div>
+          <div class="footer">
+            Este es un correo automático, por favor no respondas a este mensaje. Si no deseas recibir estos correos, puedes desactivar la opción en la configuración de tu perfil.
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    await this.transporter.sendMail({
+      from: `"${fromName}" <${fromUser}>`,
+      to,
+      subject: subject || `${icon} Notificación de Stimi`,
+      html,
+    });
+
+    this.logger.log(`Notification email sent to ${to}`);
+  }
 }

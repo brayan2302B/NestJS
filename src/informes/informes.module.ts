@@ -15,6 +15,7 @@ import { AuthModule } from '../auth/auth.module';
 import { PersonasModule } from '../personas/personas.module';
 import { InformeGf } from '../informe-gf/entities/informe-gf.entity';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module';
+import { N8nModule } from '../n8n/n8n.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { NotificacionesModule } from '../notificaciones/notificaciones.module';
     AuthModule,
     PersonasModule,
     NotificacionesModule,
+    N8nModule,
   ],
   controllers: [InformesController],
   providers: [InformesService, InformeGcValidationService],

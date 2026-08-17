@@ -16,6 +16,7 @@ import { Version } from '../versiones/entities/version.entity';
 import { PeriodoCarga } from '../periodos-carga/entities/periodo-carga.entity';
 import { Contrato } from '../contratos/entities/contrato.entity';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { N8nService } from '../n8n/n8n.service';
 
 
 @Injectable()
@@ -40,6 +41,7 @@ export class InformesService {
     @InjectRepository(Contrato)
     private readonly contratoRepository: Repository<Contrato>,
     private readonly notificacionesService: NotificacionesService,
+    private readonly n8nService: N8nService,
   ) {}
 
   // ── MÉTODOS DE INTEGRACIÓN CON EL FRONTEND ──
@@ -56,7 +58,7 @@ export class InformesService {
   }
 
   async findInstructorReports(idUsuario: number) {
-    return this.informeRepository.find({
+    const reports = await this.informeRepository.find({
       where: { usuario: { id_usuario: idUsuario } },
       relations: { periodo: true, usuario: true, versiones: true },
       order: {
@@ -64,11 +66,23 @@ export class InformesService {
         created_at: 'DESC',
       },
     });
+
+    reports.forEach((report) => {
+      if (report.versiones && report.versiones.length > 0) {
+        report.versiones.sort((a, b) => b.numero_version - a.numero_version);
+        const latest = report.versiones[0];
+        if (latest && latest.estado) {
+          report.estado = latest.estado;
+        }
+      }
+    });
+
+    return reports;
   }
 
   async findCoordinatorReports(areaId?: number) {
     const whereClause = areaId ? { usuario: { area: { id_area: areaId } } } : {};
-    return this.informeRepository.find({
+    const reports = await this.informeRepository.find({
       where: whereClause,
       relations: { periodo: true, usuario: { area: true }, versiones: true },
       order: {
@@ -76,6 +90,18 @@ export class InformesService {
         created_at: 'DESC',
       },
     });
+
+    reports.forEach((report) => {
+      if (report.versiones && report.versiones.length > 0) {
+        report.versiones.sort((a, b) => b.numero_version - a.numero_version);
+        const latest = report.versiones[0];
+        if (latest && latest.estado) {
+          report.estado = latest.estado;
+        }
+      }
+    });
+
+    return reports;
   }
 
   async findHistorial(idUsuario: number, isCoordinator: boolean, areaId?: number) {
@@ -253,6 +279,14 @@ export class InformesService {
     // Set report status to 'borrador' avoiding cascade validation issues
     await this.informeRepository.update({ id_informe: informe.id_informe }, { estado: 'borrador' });
 
+    this.n8nService.notifyAction('informe_cargado', {
+      id_informe: informe.id_informe,
+      tipo_informe: tipo,
+      periodo: periodoStr,
+      id_usuario: idUsuario,
+      version: 1,
+    });
+
     // Reload and return
     return this.informeRepository.findOne({
       where: { id_informe: informe.id_informe },
@@ -278,8 +312,15 @@ export class InformesService {
       return this.uploadReport(idUsuario, file, periodoStr, tipo);
     }
 
-    // Block uploading a new version if the current report is already validated
-    if (informe.estado === 'validado') {
+    // Check highest (latest) version status if versions exist
+    if (informe.versiones && informe.versiones.length > 0) {
+      const highestVersionObj = informe.versiones.reduce((max, v) => v.numero_version > max.numero_version ? v : max, informe.versiones[0]);
+      if (highestVersionObj && (highestVersionObj.estado === 'validado' || highestVersionObj.estado === 'aprobado')) {
+        throw new BadRequestException(
+          `El informe ${tipoInforme} del período ${periodoStr} ya fue validado en su versión más reciente (V${highestVersionObj.numero_version}) y no puede recibir nuevas versiones.`,
+        );
+      }
+    } else if (informe.estado === 'validado') {
       throw new BadRequestException(
         `El informe ${tipoInforme} del período ${periodoStr} ya fue validado y no puede recibir nuevas versiones.`,
       );
@@ -294,7 +335,7 @@ export class InformesService {
 
     // Create the new version record
     const version = this.versionRepository.create({
-      informe,
+      informe: { id_informe: informe.id_informe } as any,
       numero_version: nextVersionNumber,
       archivo_ruta: file.path.replace(/\\/g, '/'),
       archivo_nombre_original: file.originalname,
@@ -306,8 +347,16 @@ export class InformesService {
     // Reset report state to borrador and clear old observations using update to avoid cascade issues
     await this.informeRepository.update(
       { id_informe: informe.id_informe },
-      { estado: 'borrador', observacion: undefined }
+      { estado: 'borrador', observacion: null as any }
     );
+
+    this.n8nService.notifyAction('informe_cargado', {
+      id_informe: informe.id_informe,
+      tipo_informe: tipo,
+      periodo: periodoStr,
+      id_usuario: idUsuario,
+      version: nextVersionNumber,
+    });
 
     return this.informeRepository.findOne({
       where: { id_informe: informe.id_informe },
@@ -506,6 +555,15 @@ export class InformesService {
         );
       }
     }
+
+    this.n8nService.notifyAction('estado_cambiado', {
+      id_informe: report.id_informe,
+      tipo_informe: report.tipo_informe,
+      periodo: periodoStr,
+      id_usuario: report.usuario.id_usuario,
+      estado: mappedEstado,
+      observacion: observacion || null,
+    });
 
     return this.informeRepository.findOne({
       where: { id_informe: report.id_informe },

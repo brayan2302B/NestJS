@@ -9,12 +9,14 @@ import { HistorialConversacion } from './entities/historial-conversacion.entity'
 import { Obligacione } from '../obligaciones/entities/obligacione.entity';
 import { InformesModule } from '../informes/informes.module';
 import { ObligacionesModule } from '../obligaciones/obligaciones.module';
+import { N8nModule } from '../n8n/n8n.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Persona, HistorialConversacion, Obligacione]),
     InformesModule,
     ObligacionesModule,
+    N8nModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({

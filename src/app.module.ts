@@ -21,6 +21,8 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { TenantModule } from './common/tenant/tenant.module';
 import { TenantMiddleware } from './common/tenant/tenant.middleware';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { N8nModule } from './n8n/n8n.module';
+import { CoordinadorModule } from './coordinador/coordinador.module';
 
 @Module({
   imports: [
@@ -75,6 +77,8 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     PeriodosCargaModule,
     NotificacionesModule,
     WebhooksModule,
+    N8nModule,
+    CoordinadorModule,
   ],
   controllers: [AppController],
   providers: [AppService],
