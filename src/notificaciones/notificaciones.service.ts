@@ -65,7 +65,7 @@ export class NotificacionesService {
       ];
 
       for (const item of defaultNotifs) {
-        await this.crear(userId, item.mensaje, item.tipo);
+        await this.crear(userId, item.mensaje, item.tipo, false);
       }
 
       list = await this.notifRepository.find({
@@ -121,6 +121,7 @@ export class NotificacionesService {
     userId: number,
     mensaje: string,
     tipo: NotificacionTipo = 'info',
+    enviarCorreo: boolean = true,
   ): Promise<any> {
     const notif = this.notifRepository.create({
       usuario: { id_usuario: userId } as any,
@@ -134,23 +135,25 @@ export class NotificacionesService {
       relations: { usuario: true },
     });
 
-    // Enviar correo electrónico si está habilitado en las preferencias del usuario
-    try {
-      const user = await this.personaRepository.findOne({ where: { id_usuario: userId } });
-      if (user && user.correo) {
-        const prefs: any = user.preferencias_notificaciones ?? {};
-        if (prefs.notif_correo !== false) {
-          let title = 'Información';
-          if (tipo === 'success') title = 'Éxito';
-          else if (tipo === 'warning') title = 'Atención';
-          else if (tipo === 'error') title = 'Error';
+    // Enviar correo electrónico solo si enviarCorreo es true y está habilitado en las preferencias del usuario
+    if (enviarCorreo) {
+      try {
+        const user = await this.personaRepository.findOne({ where: { id_usuario: userId } });
+        if (user && user.correo) {
+          const prefs: any = user.preferencias_notificaciones ?? {};
+          if (prefs.notif_correo !== false) {
+            let title = 'Información';
+            if (tipo === 'success') title = 'Éxito';
+            else if (tipo === 'warning') title = 'Atención';
+            else if (tipo === 'error') title = 'Error';
 
-          const subject = `🔔 [Stimi] Nueva notificación: ${title}`;
-          await this.mailService.sendNotificationEmail(user.correo, subject, mensaje, tipo);
+            const subject = `🔔 [Stimi] Nueva notificación: ${title}`;
+            await this.mailService.sendNotificationEmail(user.correo, subject, mensaje, tipo);
+          }
         }
+      } catch (err: any) {
+        console.error('Error al enviar correo de notificación:', err?.message || err);
       }
-    } catch (err: any) {
-      console.error('Error al enviar correo de notificación:', err?.message || err);
     }
 
     return this.formatNotificacion(fullNotif || saved);
