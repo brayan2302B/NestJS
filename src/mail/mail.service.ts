@@ -133,4 +133,82 @@ export class MailService {
 
     this.logger.log(`Notification email sent to ${to}`);
   }
+
+  async sendReportStatusEmail(
+    to: string,
+    instructorName: string,
+    tipoInforme: string,
+    periodo: string,
+    estado: string,
+    observacion?: string,
+  ): Promise<void> {
+    const fromName = this.configService.get<string>('MAIL_FROM_NAME', 'Stimi');
+    const fromUser = this.configService.get<string>('MAIL_USER');
+
+    const isApproved = estado.toLowerCase() === 'validado' || estado.toLowerCase() === 'aprobado';
+    const estadoTexto = isApproved ? 'APROBADO' : 'DEVUELTO';
+    const icon = isApproved ? '✅' : '❌';
+    const headerBg = isApproved ? '#39A900' : '#D9381E';
+    const subject = `${icon} [Stimi SENA] Informe ${tipoInforme} (${periodo}) — ${isApproved ? 'Aprobado' : 'Devuelto'}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <style>
+          body { font-family: Arial, sans-serif; background: #f4f4f7; margin: 0; padding: 0; }
+          .wrapper { max-width: 520px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+          .header { background: ${headerBg}; padding: 32px 24px; text-align: center; }
+          .header h1 { color: #fff; margin: 0; font-size: 22px; letter-spacing: 1px; }
+          .body { padding: 32px 28px; color: #333; }
+          .body p { font-size: 15px; line-height: 1.6; }
+          .details-box { background: #f9f9fb; border-left: 4px solid ${headerBg}; padding: 16px; margin: 24px 0; border-radius: 4px; }
+          .details-box p { margin: 6px 0; font-size: 14px; color: #444; }
+          .obs-box { background: #fff8f8; border: 1px solid #f5c6cb; padding: 12px 16px; border-radius: 6px; margin-top: 12px; color: #721c24; }
+          .footer { background: #f4f4f7; padding: 16px 24px; text-align: center; font-size: 12px; color: #888; }
+        </style>
+      </head>
+      <body>
+        <div class="wrapper">
+          <div class="header">
+            <h1>${icon} Informe ${estadoTexto}</h1>
+          </div>
+          <div class="body">
+            <p>Hola <strong>${instructorName || 'Instructor'}</strong>,</p>
+            <p>Se ha actualizado el estado de tu informe en la plataforma <strong>Stimi (SENA)</strong>:</p>
+            <div class="details-box">
+              <p><strong>Tipo de Informe:</strong> ${tipoInforme}</p>
+              <p><strong>Período:</strong> ${periodo}</p>
+              <p><strong>Estado:</strong> <span style="color: ${headerBg}; font-weight: bold;">${estadoTexto}</span></p>
+              ${observacion ? `<div class="obs-box"><strong>Motivo / Observación:</strong><br/>${observacion}</div>` : ''}
+            </div>
+            <p>Puedes acceder a la plataforma para ver más detalles.</p>
+            <p>Saludos,<br/>El equipo de Stimi SENA</p>
+          </div>
+          <div class="footer">
+            Este es un correo automático, por favor no respondas a este mensaje.
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"${fromName}" <${fromUser}>`,
+        to,
+        subject,
+        html,
+      });
+      this.logger.log(`Report status email (${estadoTexto}) sent successfully to ${to}`);
+    } catch (error: any) {
+      this.logger.error(
+        `Error sending report status email to ${to}: ${error?.message || error}`,
+        error?.stack,
+      );
+      throw error;
+    }
+  }
 }
+

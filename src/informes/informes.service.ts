@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { join } from 'path';
@@ -17,10 +17,13 @@ import { PeriodoCarga } from '../periodos-carga/entities/periodo-carga.entity';
 import { Contrato } from '../contratos/entities/contrato.entity';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { N8nService } from '../n8n/n8n.service';
+import { MailService } from '../mail/mail.service';
 
 
 @Injectable()
 export class InformesService {
+  private readonly logger = new Logger(InformesService.name);
+
   constructor(
     @InjectRepository(Informe)
     private readonly informeRepository: Repository<Informe>,
@@ -42,6 +45,7 @@ export class InformesService {
     private readonly contratoRepository: Repository<Contrato>,
     private readonly notificacionesService: NotificacionesService,
     private readonly n8nService: N8nService,
+    private readonly mailService: MailService,
   ) {}
 
   // ── MÉTODOS DE INTEGRACIÓN CON EL FRONTEND ──
@@ -521,6 +525,39 @@ export class InformesService {
       await this.versionRepository.save(latestVersion);
     }
 
+    // ── Enviar correo de notificación al instructor al aprobar (validado) o devolver un informe ──
+    if (mappedEstado === 'validado' || mappedEstado === 'devuelto') {
+      try {
+        let instructor = report.usuario;
+        if (!instructor || !instructor.correo) {
+          const userId = report.usuario?.id_usuario;
+          if (userId) {
+            instructor = (await this.personaRepository.findOne({ where: { id_usuario: userId } })) as Persona;
+          }
+        }
+
+        if (instructor && instructor.correo) {
+          await this.mailService.sendReportStatusEmail(
+            instructor.correo,
+            instructor.nombre_completo,
+            report.tipo_informe,
+            periodoStr,
+            mappedEstado,
+            observacion,
+          );
+        } else {
+          this.logger.warn(
+            `No se pudo enviar correo de estado de informe: Correo de instructor no encontrado para el usuario ID ${report.usuario?.id_usuario}`,
+          );
+        }
+      } catch (mailErr: any) {
+        this.logger.error(
+          `Error al enviar correo de estado de informe a ${report.usuario?.correo || 'instructor'}: ${mailErr?.message || mailErr}`,
+          mailErr?.stack,
+        );
+      }
+    }
+
     // Disparar notificación automática al propietario del informe (respetando sus preferencias)
     if (report.usuario) {
       const typeMap: Record<string, string> = {
@@ -551,7 +588,8 @@ export class InformesService {
         await this.notificacionesService.crear(
           report.usuario.id_usuario,
           message,
-          cleanType as any
+          cleanType as any,
+          false // El correo ya fue enviado arriba mediante sendReportStatusEmail
         );
       }
     }

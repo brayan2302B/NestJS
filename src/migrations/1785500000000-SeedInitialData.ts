@@ -71,11 +71,64 @@ export class SeedInitialData1785500000000 implements MigrationInterface {
         ('María García', 'CC', '654321', 'maria.garcia@sena.edu.co', '${passCoordinador}', 'aprobado', ${coordinadorRoleId}, ${areaId}, '{}', NOW(), NOW())`,
       );
     }
+
+    // 4. Seed Periodos de Carga (Meses 1 a 12 del año 2026)
+    const anio = 2026;
+    for (let mes = 1; mes <= 12; mes++) {
+      const existingPeriodo = await queryRunner.query(
+        `SELECT "id_periodo" FROM "periodos_carga" WHERE "anio" = ${anio} AND "mes" = ${mes} LIMIT 1`,
+      );
+      if (existingPeriodo.length === 0) {
+        const lastDay = new Date(anio, mes, 0).getDate();
+        const fechaLimite = `${anio}-${String(mes).padStart(2, '0')}-${String(lastDay).padStart(2, '0')} 23:59:59`;
+        await queryRunner.query(
+          `INSERT INTO "periodos_carga" ("anio", "mes", "fecha_limite", "habilitado", "created_at", "updated_at")
+           VALUES (${anio}, ${mes}, '${fechaLimite}', true, NOW(), NOW())`,
+        );
+      }
+    }
+
+    // 5. Seed Contratos base para usuarios base
+    const juanUserRes = await queryRunner.query(
+      `SELECT "id_usuario" FROM "usuarios" WHERE "correo" = 'juan.perez@sena.edu.co' LIMIT 1`,
+    );
+    const mariaUserRes = await queryRunner.query(
+      `SELECT "id_usuario" FROM "usuarios" WHERE "correo" = 'maria.garcia@sena.edu.co' LIMIT 1`,
+    );
+
+    if (juanUserRes.length > 0) {
+      const juanId = juanUserRes[0].id_usuario;
+      const existingJuanContrato = await queryRunner.query(
+        `SELECT "id_contrato" FROM "contratos" WHERE "id_usuario" = ${juanId} LIMIT 1`,
+      );
+      if (existingJuanContrato.length === 0) {
+        await queryRunner.query(
+          `INSERT INTO "contratos" ("id_usuario", "fecha_inicio", "fecha_fin", "estado", "created_at", "updated_at")
+           VALUES (${juanId}, '${anio}-01-01', '${anio}-12-31', 'activo', NOW(), NOW())`,
+        );
+      }
+    }
+
+    if (mariaUserRes.length > 0) {
+      const mariaId = mariaUserRes[0].id_usuario;
+      const existingMariaContrato = await queryRunner.query(
+        `SELECT "id_contrato" FROM "contratos" WHERE "id_usuario" = ${mariaId} LIMIT 1`,
+      );
+      if (existingMariaContrato.length === 0) {
+        await queryRunner.query(
+          `INSERT INTO "contratos" ("id_usuario", "fecha_inicio", "fecha_fin", "estado", "created_at", "updated_at")
+           VALUES (${mariaId}, '${anio}-01-01', '${anio}-12-31', 'activo', NOW(), NOW())`,
+        );
+      }
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `DELETE FROM "usuarios" WHERE "numero_documento" IN ('123456', '654321') AND "id_usuario" NOT IN (SELECT DISTINCT "id_usuario" FROM "contratos")`,
+      `DELETE FROM "contratos" WHERE "id_usuario" IN (SELECT "id_usuario" FROM "usuarios" WHERE "correo" IN ('juan.perez@sena.edu.co', 'maria.garcia@sena.edu.co'))`,
+    );
+    await queryRunner.query(
+      `DELETE FROM "usuarios" WHERE "correo" IN ('juan.perez@sena.edu.co', 'maria.garcia@sena.edu.co')`,
     );
   }
 }
