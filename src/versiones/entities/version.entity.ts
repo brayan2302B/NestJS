@@ -1,4 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Informe } from '../../informes/entities/informe.entity';
 
 @Entity('versiones')
@@ -6,14 +12,20 @@ export class Version {
   @PrimaryGeneratedColumn({ name: 'id_version' })
   id_version!: number;
 
-  @ManyToOne(() => Informe, (informe) => informe.versiones, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Informe, (informe) => informe.versiones, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'id_informe' })
   informe!: Informe;
 
   @Column({ name: 'numero_version', type: 'int' })
   numero_version!: number;
 
-  @Column({ name: 'fecha_version', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({
+    name: 'fecha_version',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   fecha_version!: Date;
 
   @Column({ name: 'descripcion', type: 'varchar', length: 255, nullable: true })

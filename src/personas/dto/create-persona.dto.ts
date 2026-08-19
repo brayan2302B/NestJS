@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsEmail,
   IsIn,
   IsOptional,
@@ -11,42 +12,75 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreatePersonaDto {
-  @ApiProperty({ description: 'Nombre completo del usuario', example: 'Juan Pérez' })
+  @ApiProperty({
+    description: 'Nombre completo del usuario',
+    example: 'Juan Pérez',
+  })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MaxLength(150)
   nombreCompleto!: string;
 
-  @ApiProperty({ description: 'Correo electrónico institucional o personal', example: 'juan.perez@sena.edu.co' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @ApiProperty({
+    description: 'Correo electrónico institucional o personal',
+    example: 'juan.perez@sena.edu.co',
+  })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEmail()
   @MaxLength(150)
   email!: string;
 
-  @ApiProperty({ description: 'Tipo de documento de identidad', enum: ['CC', 'CE', 'TI'], example: 'CC' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @ApiProperty({
+    description: 'Tipo de documento de identidad',
+    enum: ['CC', 'CE', 'TI'],
+    example: 'CC',
+  })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsString()
   @IsIn(['CC', 'CE', 'TI'])
   tipoDocumento!: string;
 
-  @ApiProperty({ description: 'Número de documento de identidad', example: '123456789' })
+  @ApiProperty({
+    description: 'Número de documento de identidad',
+    example: '123456789',
+  })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MaxLength(20)
   numeroDocumento!: string;
 
-  @ApiProperty({ description: 'Contraseña para la cuenta', minLength: 8, example: 'Instructor123*' })
+  @ApiProperty({
+    description: 'Contraseña para la cuenta',
+    minLength: 8,
+    example: 'Instructor123*',
+  })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(8)
   @MaxLength(255)
   @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_])[A-Za-z\d\W_]{8,}$/, {
-    message: 'La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula, un número y un carácter especial.',
+    message:
+      'La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula, un número y un carácter especial.',
   })
   contrasena!: string;
 
-  @ApiProperty({ description: 'Confirmación de la contraseña', required: false, example: 'instructor123' })
+  @ApiProperty({
+    description: 'Confirmación de la contraseña',
+    required: false,
+    example: 'instructor123',
+  })
   @IsOptional()
   @IsString()
   confirmarContrasena?: string;
+
+  @ApiProperty({
+    description: 'Aceptación de la política de tratamiento de datos personales',
+    example: true,
+  })
+  @IsBoolean({ message: 'Debe aceptar los términos de tratamiento de datos.' })
+  aceptaTerminos!: boolean;
 }

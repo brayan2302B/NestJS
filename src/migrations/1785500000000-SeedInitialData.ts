@@ -6,7 +6,9 @@ export class SeedInitialData1785500000000 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1. Seed Roles ('instructor', 'coordinador')
-    const roles = await queryRunner.query(`SELECT "id_rol", "nombre_rol" FROM "roles"`);
+    const roles = await queryRunner.query(
+      `SELECT "id_rol", "nombre_rol" FROM "roles"`,
+    );
     const roleNames = roles.map((r: any) => r.nombre_rol);
 
     if (!roleNames.includes('instructor')) {
@@ -21,7 +23,9 @@ export class SeedInitialData1785500000000 implements MigrationInterface {
     }
 
     // 2. Seed Areas ('Tecnologías de la Información')
-    const areas = await queryRunner.query(`SELECT "id_area", "nombre_area" FROM "areas"`);
+    const areas = await queryRunner.query(
+      `SELECT "id_area", "nombre_area" FROM "areas"`,
+    );
     const areaNames = areas.map((a: any) => a.nombre_area);
 
     if (!areaNames.includes('Tecnologías de la Información')) {

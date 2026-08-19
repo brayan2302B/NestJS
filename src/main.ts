@@ -8,10 +8,18 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
+  const app = await NestFactory.create(AppModule, {
+    logger: ['error', 'warn'],
+  });
   const allowedOrigins = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(',').map(origin => origin.trim())
-    : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://localhost:5175', 'http://localhost:3000'];
+    ? process.env.FRONTEND_URL.split(',').map((origin) => origin.trim())
+    : [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        'http://localhost:3000',
+      ];
 
   app.enableCors({
     origin: allowedOrigins,
@@ -35,7 +43,9 @@ async function bootstrap() {
   // Swagger setup
   const config = new DocumentBuilder()
     .setTitle('SENA Reports API')
-    .setDescription('API for managing instructor monthly reports, contracts, obligations, and signatures')
+    .setDescription(
+      'API for managing instructor monthly reports, contracts, obligations, and signatures',
+    )
     .setVersion('1.0')
     .addBearerAuth()
     .build();

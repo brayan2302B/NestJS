@@ -73,7 +73,12 @@ export class MailService {
     this.logger.log(`Password reset email sent to ${to}`);
   }
 
-  async sendNotificationEmail(to: string, subject: string, message: string, type: string = 'info'): Promise<void> {
+  async sendNotificationEmail(
+    to: string,
+    subject: string,
+    message: string,
+    type: string = 'info',
+  ): Promise<void> {
     const fromName = this.configService.get<string>('MAIL_FROM_NAME', 'Stimi');
     const fromUser = this.configService.get<string>('MAIL_USER');
 
@@ -145,7 +150,9 @@ export class MailService {
     const fromName = this.configService.get<string>('MAIL_FROM_NAME', 'Stimi');
     const fromUser = this.configService.get<string>('MAIL_USER');
 
-    const isApproved = estado.toLowerCase() === 'validado' || estado.toLowerCase() === 'aprobado';
+    const isApproved =
+      estado.toLowerCase() === 'validado' ||
+      estado.toLowerCase() === 'aprobado';
     const estadoTexto = isApproved ? 'APROBADO' : 'DEVUELTO';
     const icon = isApproved ? '✅' : '❌';
     const headerBg = isApproved ? '#39A900' : '#D9381E';
@@ -201,7 +208,9 @@ export class MailService {
         subject,
         html,
       });
-      this.logger.log(`Report status email (${estadoTexto}) sent successfully to ${to}`);
+      this.logger.log(
+        `Report status email (${estadoTexto}) sent successfully to ${to}`,
+      );
     } catch (error: any) {
       this.logger.error(
         `Error sending report status email to ${to}: ${error?.message || error}`,
@@ -211,4 +220,3 @@ export class MailService {
     }
   }
 }
-

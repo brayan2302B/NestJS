@@ -15,7 +15,9 @@ export class Evidencia {
   @PrimaryGeneratedColumn({ name: 'id_evidencia' })
   id_evidencia!: number;
 
-  @ManyToOne(() => Actividad, (actividad) => actividad.evidencias, { nullable: false })
+  @ManyToOne(() => Actividad, (actividad) => actividad.evidencias, {
+    nullable: false,
+  })
   @JoinColumn({ name: 'id_actividad' })
   actividad!: Actividad;
 

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Obligacione } from './entities/obligacione.entity';
@@ -15,17 +19,25 @@ export class ObligacionesService {
     private contratosRepository: Repository<Contrato>,
   ) {}
 
-  async create(createObligacioneDto: CreateObligacioneDto, userId: number, userRol: string) {
+  async create(
+    createObligacioneDto: CreateObligacioneDto,
+    userId: number,
+    userRol: string,
+  ) {
     // Verify contract exists and user owns it (if instructor)
     const contrato = await this.contratosRepository.findOne({
       where: { id_contrato: createObligacioneDto.id_contrato },
       relations: { usuario: true },
     });
     if (!contrato) {
-      throw new NotFoundException(`Contrato #${createObligacioneDto.id_contrato} no encontrado`);
+      throw new NotFoundException(
+        `Contrato #${createObligacioneDto.id_contrato} no encontrado`,
+      );
     }
     if (userRol !== 'coordinador' && contrato.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para agregar obligaciones a este contrato');
+      throw new ForbiddenException(
+        'No tiene permisos para agregar obligaciones a este contrato',
+      );
     }
 
     const obligacion = this.obligacionesRepository.create({
@@ -36,7 +48,9 @@ export class ObligacionesService {
   }
 
   findAll() {
-    return this.obligacionesRepository.find({ relations: { contrato: { usuario: true } } });
+    return this.obligacionesRepository.find({
+      relations: { contrato: { usuario: true } },
+    });
   }
 
   findByUserId(userId: number) {
@@ -57,7 +71,12 @@ export class ObligacionesService {
     return obligacion;
   }
 
-  async update(id: number, updateObligacioneDto: UpdateObligacioneDto, userId: number, userRol: string) {
+  async update(
+    id: number,
+    updateObligacioneDto: UpdateObligacioneDto,
+    userId: number,
+    userRol: string,
+  ) {
     const obligacion = await this.findOne(id);
     await this.checkOwnership(id, userId, userRol);
 
@@ -70,10 +89,17 @@ export class ObligacionesService {
         relations: { usuario: true },
       });
       if (!contrato) {
-        throw new NotFoundException(`Contrato #${updateObligacioneDto.id_contrato} no encontrado`);
+        throw new NotFoundException(
+          `Contrato #${updateObligacioneDto.id_contrato} no encontrado`,
+        );
       }
-      if (userRol !== 'coordinador' && contrato.usuario?.id_usuario !== userId) {
-        throw new ForbiddenException('No tiene permisos para mover la obligación a este contrato');
+      if (
+        userRol !== 'coordinador' &&
+        contrato.usuario?.id_usuario !== userId
+      ) {
+        throw new ForbiddenException(
+          'No tiene permisos para mover la obligación a este contrato',
+        );
       }
       obligacion.contrato = contrato;
     }
@@ -91,7 +117,9 @@ export class ObligacionesService {
     if (userRol === 'coordinador') return;
     const obligacion = await this.findOne(idObligacion);
     if (obligacion.contrato?.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para acceder a esta obligación');
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a esta obligación',
+      );
     }
   }
 }

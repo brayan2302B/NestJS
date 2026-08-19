@@ -8,7 +8,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -26,8 +31,14 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Iniciar sesión de usuario' })
-  @ApiResponse({ status: 200, description: 'Autenticación exitosa y retorno del JWT token.' })
-  @ApiResponse({ status: 401, description: 'Credenciales inválidas o cuenta pendiente de aprobación.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Autenticación exitosa y retorno del JWT token.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Credenciales inválidas o cuenta pendiente de aprobación.',
+  })
   async login(@Body() body: LoginDto) {
     const identifier = body.username;
     const password = body.password;
@@ -39,13 +50,20 @@ export class AuthController {
   @ApiBearerAuth()
   @UseGuards(JwtGuard)
   @ApiOperation({ summary: 'Cambiar contraseña del usuario autenticado' })
-  @ApiResponse({ status: 200, description: 'Contraseña actualizada correctamente.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Contraseña actualizada correctamente.',
+  })
   @ApiResponse({ status: 401, description: 'Contraseña actual incorrecta.' })
   async changePassword(
     @Body() body: ChangePasswordDto,
     @CurrentUser() user: any,
   ) {
-    return this.authService.changePassword(user.sub, body.currentPassword, body.newPassword);
+    return this.authService.changePassword(
+      user.sub,
+      body.currentPassword,
+      body.newPassword,
+    );
   }
 
   @Post('forgot-password')

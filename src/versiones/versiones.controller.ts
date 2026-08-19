@@ -15,7 +15,12 @@ import { CreateVersionDto } from './dto/create-version.dto';
 import { UpdateVersionDto } from './dto/update-version.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/user.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('versiones')
 @ApiBearerAuth()
@@ -27,7 +32,10 @@ export class VersionesController {
   @Post()
   @ApiOperation({ summary: 'Crear una versión de informe manualmente' })
   @ApiResponse({ status: 201, description: 'Versión creada exitosamente.' })
-  @ApiResponse({ status: 403, description: 'Acceso prohibido para este informe.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso prohibido para este informe.',
+  })
   create(@Body() createVersionDto: CreateVersionDto, @CurrentUser() user: any) {
     return this.versionesService.create(createVersionDto, user.sub, user.rol);
   }
@@ -61,7 +69,12 @@ export class VersionesController {
     @Body() updateVersionDto: UpdateVersionDto,
     @CurrentUser() user: any,
   ) {
-    return this.versionesService.update(+id, updateVersionDto, user.sub, user.rol);
+    return this.versionesService.update(
+      +id,
+      updateVersionDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Delete(':id')
@@ -73,7 +86,9 @@ export class VersionesController {
   }
 
   @Get(':id/view')
-  @ApiOperation({ summary: 'Ver el PDF de una versión específica de un informe' })
+  @ApiOperation({
+    summary: 'Ver el PDF de una versión específica de un informe',
+  })
   @ApiResponse({ status: 200, description: 'Archivo PDF de la versión.' })
   @ApiResponse({ status: 404, description: 'Versión o archivo no encontrado.' })
   async viewVersion(
@@ -87,7 +102,9 @@ export class VersionesController {
     res.setHeader('Content-Type', 'application/pdf');
     return res.sendFile(fileData.path, (err) => {
       if (err && !res.headersSent) {
-        res.status(500).json({ message: 'Error al enviar el archivo', error: err.message });
+        res
+          .status(500)
+          .json({ message: 'Error al enviar el archivo', error: err.message });
       }
     });
   }

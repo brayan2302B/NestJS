@@ -27,7 +27,9 @@ export class NovedadesService {
       },
     });
     if (!version) {
-      throw new NotFoundException(`Versión #${createNovedadDto.fk_version} no encontrada`);
+      throw new NotFoundException(
+        `Versión #${createNovedadDto.fk_version} no encontrada`,
+      );
     }
 
     const novedad = this.novedadRepository.create({
@@ -41,9 +43,10 @@ export class NovedadesService {
     // Disparar notificación automática al instructor del informe
     if (version?.informe?.usuario) {
       const userId = version.informe.usuario.id_usuario;
-      const cleanDesc = createNovedadDto.descripcion.length > 60
-        ? `${createNovedadDto.descripcion.substring(0, 57)}...`
-        : createNovedadDto.descripcion;
+      const cleanDesc =
+        createNovedadDto.descripcion.length > 60
+          ? `${createNovedadDto.descripcion.substring(0, 57)}...`
+          : createNovedadDto.descripcion;
       await this.notificacionesService.crear(
         userId,
         `Se ha registrado una novedad en su informe: "${cleanDesc}"`,
@@ -55,7 +58,9 @@ export class NovedadesService {
   }
 
   findAll() {
-    return this.novedadRepository.find({ relations: { version: { informe: { usuario: true } } } });
+    return this.novedadRepository.find({
+      relations: { version: { informe: { usuario: true } } },
+    });
   }
 
   async findOne(id: number) {
@@ -81,9 +86,13 @@ export class NovedadesService {
       novedad.estado = updateNovedadDto.estado;
     }
     if (updateNovedadDto.fk_version !== undefined) {
-      const version = await this.versionRepository.findOneBy({ id_version: updateNovedadDto.fk_version });
+      const version = await this.versionRepository.findOneBy({
+        id_version: updateNovedadDto.fk_version,
+      });
       if (!version) {
-        throw new NotFoundException(`Versión #${updateNovedadDto.fk_version} no encontrada`);
+        throw new NotFoundException(
+          `Versión #${updateNovedadDto.fk_version} no encontrada`,
+        );
       }
       novedad.version = version;
     }

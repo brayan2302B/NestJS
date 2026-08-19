@@ -18,7 +18,8 @@ import { MailModule } from '../mail/mail.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'super-secret-key-12345',
+        secret:
+          configService.get<string>('JWT_SECRET') || 'super-secret-key-12345',
         signOptions: { expiresIn: '24h' },
       }),
     }),

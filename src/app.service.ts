@@ -29,15 +29,21 @@ export class AppService implements OnModuleInit {
         await rolRepo.save(instructorRol);
       }
 
-      let coordinadorRol = await rolRepo.findOneBy({ nombre_rol: 'coordinador' });
+      let coordinadorRol = await rolRepo.findOneBy({
+        nombre_rol: 'coordinador',
+      });
       if (!coordinadorRol) {
         coordinadorRol = rolRepo.create({ nombre_rol: 'coordinador' });
         await rolRepo.save(coordinadorRol);
       }
 
-      let tiArea = await areaRepo.findOneBy({ nombre_area: 'Tecnologías de la Información' });
+      let tiArea = await areaRepo.findOneBy({
+        nombre_area: 'Tecnologías de la Información',
+      });
       if (!tiArea) {
-        tiArea = areaRepo.create({ nombre_area: 'Tecnologías de la Información' });
+        tiArea = areaRepo.create({
+          nombre_area: 'Tecnologías de la Información',
+        });
         await areaRepo.save(tiArea);
       }
 
@@ -45,7 +51,7 @@ export class AppService implements OnModuleInit {
       const instructorUser = await personaRepo.findOne({
         where: [
           { numero_documento: '123456' },
-          { correo: 'juan.perez@sena.edu.co' }
+          { correo: 'juan.perez@sena.edu.co' },
         ],
       });
       if (!instructorUser) {
@@ -68,7 +74,7 @@ export class AppService implements OnModuleInit {
       const coordinatorUser = await personaRepo.findOne({
         where: [
           { numero_documento: '654321' },
-          { correo: 'maria.garcia@sena.edu.co' }
+          { correo: 'maria.garcia@sena.edu.co' },
         ],
       });
       if (!coordinatorUser) {

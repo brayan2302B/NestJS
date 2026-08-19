@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InformeGc } from './entities/informe-gc.entity';
@@ -15,14 +19,16 @@ export class InformeGcService {
   create(createInformeGcDto: CreateInformeGcDto) {
     const informe = this.informeGcRepository.create({
       version_formato: createInformeGcDto.version_formato,
-      informe: { id_informe: createInformeGcDto.id_informe } as any,
-      contrato: { id_contrato: createInformeGcDto.id_contrato } as any,
+      informe: { id_informe: createInformeGcDto.id_informe },
+      contrato: { id_contrato: createInformeGcDto.id_contrato },
     });
     return this.informeGcRepository.save(informe);
   }
 
   findAll() {
-    return this.informeGcRepository.find({ relations: { informe: { usuario: true }, contrato: true } });
+    return this.informeGcRepository.find({
+      relations: { informe: { usuario: true }, contrato: true },
+    });
   }
 
   findByUserId(userId: number) {
@@ -41,14 +47,23 @@ export class InformeGcService {
     return informe;
   }
 
-  async update(id: number, updateInformeGcDto: UpdateInformeGcDto, userId: number, userRol: string) {
+  async update(
+    id: number,
+    updateInformeGcDto: UpdateInformeGcDto,
+    userId: number,
+    userRol: string,
+  ) {
     await this.findOne(id);
     await this.checkOwnership(id, userId, userRol);
 
     await this.informeGcRepository.update(id, {
       version_formato: updateInformeGcDto.version_formato,
-      informe: updateInformeGcDto.id_informe ? ({ id_informe: updateInformeGcDto.id_informe } as any) : undefined,
-      contrato: updateInformeGcDto.id_contrato ? ({ id_contrato: updateInformeGcDto.id_contrato } as any) : undefined,
+      informe: updateInformeGcDto.id_informe
+        ? { id_informe: updateInformeGcDto.id_informe }
+        : undefined,
+      contrato: updateInformeGcDto.id_contrato
+        ? { id_contrato: updateInformeGcDto.id_contrato }
+        : undefined,
     });
     return this.findOne(id);
   }
@@ -63,7 +78,9 @@ export class InformeGcService {
     if (userRol === 'coordinador') return;
     const gc = await this.findOne(idGc);
     if (gc.informe?.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para acceder a este informe GC');
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a este informe GC',
+      );
     }
   }
 }

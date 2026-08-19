@@ -16,7 +16,10 @@ export const signatureMulterOptions = {
   },
   fileFilter: (req: any, file: any, callback: any) => {
     if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
-      return callback(new BadRequestException('Solo se permiten imágenes (PNG, JPG, JPEG)'), false);
+      return callback(
+        new BadRequestException('Solo se permiten imágenes (PNG, JPG, JPEG)'),
+        false,
+      );
     }
     callback(null, true);
   },

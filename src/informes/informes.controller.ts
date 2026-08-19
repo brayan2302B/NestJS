@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  ForbiddenException,
   Res,
   Query,
 } from '@nestjs/common';
@@ -25,7 +26,15 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from './multer-config';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 
 @ApiTags('informes')
 @ApiBearerAuth()
@@ -38,18 +47,26 @@ export class InformesController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Obtener informes (Instructores ven sus propios informes, Coordinadores ven los de su área)' })
+  @ApiOperation({
+    summary:
+      'Obtener informes (Instructores ven sus propios informes, Coordinadores ven los de su área)',
+  })
   @ApiResponse({ status: 200, description: 'Lista de informes devuelta.' })
   async getInformes(@CurrentUser() user: any) {
     if (user.rol === 'coordinador') {
       const fullUser = await this.informesService.getUserWithArea(user.sub);
-      return this.informesService.findCoordinatorReports(fullUser.area?.id_area);
+      return this.informesService.findCoordinatorReports(
+        fullUser.area?.id_area,
+      );
     }
     return this.informesService.findInstructorReports(user.sub);
   }
 
   @Get('historial')
-  @ApiOperation({ summary: 'Obtener historial de informes (Excluyendo el periodo de carga actual)' })
+  @ApiOperation({
+    summary:
+      'Obtener historial de informes (Excluyendo el periodo de carga actual)',
+  })
   @ApiResponse({ status: 200, description: 'Lista de historial de informes.' })
   async getHistorial(@CurrentUser() user: any) {
     const isCoordinator = user.rol === 'coordinador';
@@ -64,23 +81,29 @@ export class InformesController {
   @Get('estadisticas')
   @ApiOperation({ summary: 'Obtener métricas y estadísticas de los informes' })
   @ApiQuery({ name: 'instructorId', required: false })
-  @ApiQuery({ name: 'mes', required: false, description: 'Ejemplo: Julio 2026' })
+  @ApiQuery({
+    name: 'mes',
+    required: false,
+    description: 'Ejemplo: Julio 2026',
+  })
   @ApiQuery({ name: 'areaId', required: false })
-  @ApiResponse({ status: 200, description: 'Estadísticas calculadas en base a filtros.' })
-  async getEstadisticas(
-    @Query() queryParams: any,
-    @CurrentUser() user?: any,
-  ) {
+  @ApiResponse({
+    status: 200,
+    description: 'Estadísticas calculadas en base a filtros.',
+  })
+  async getEstadisticas(@Query() queryParams: any, @CurrentUser() user?: any) {
     const isCoordinator = user.rol === 'coordinador';
-    
+
     // Support both 'instructorId' and 'instructor' from frontend
     const paramInstructor = queryParams.instructorId || queryParams.instructor;
     const paramArea = queryParams.areaId || queryParams.area;
     const paramMes = queryParams.mes || queryParams.fecha;
 
     let filterAreaId = paramArea ? parseInt(paramArea, 10) : undefined;
-    let filterInstructorId = paramInstructor ? parseInt(paramInstructor, 10) : undefined;
-    
+    let filterInstructorId = paramInstructor
+      ? parseInt(paramInstructor, 10)
+      : undefined;
+
     if (isCoordinator && !filterAreaId) {
       const fullUser = await this.informesService.getUserWithArea(user.sub);
       filterAreaId = fullUser.area?.id_area;
@@ -124,7 +147,10 @@ export class InformesController {
     },
   })
   @ApiResponse({ status: 201, description: 'Informe cargado exitosamente.' })
-  @ApiResponse({ status: 400, description: 'Archivo requerido o formato inválido.' })
+  @ApiResponse({
+    status: 400,
+    description: 'Archivo requerido o formato inválido.',
+  })
   async uploadInforme(
     @UploadedFile() file: any,
     @Body('periodo') periodo: string,
@@ -135,31 +161,40 @@ export class InformesController {
       throw new BadRequestException('Archivo PDF requerido');
     }
     if (!periodo || !tipo) {
-      throw new BadRequestException('Los campos "periodo" y "tipo" (GC o GF) son obligatorios');
+      throw new BadRequestException(
+        'Los campos "periodo" y "tipo" (GC o GF) son obligatorios',
+      );
     }
     return this.informesService.uploadReport(user.sub, file, periodo, tipo);
   }
 
   @Get(':id/download')
-  @ApiOperation({ summary: 'Descargar el archivo PDF de la última versión de un informe' })
+  @ApiOperation({
+    summary: 'Descargar el archivo PDF de la última versión de un informe',
+  })
   @ApiResponse({ status: 200, description: 'Envío del archivo PDF.' })
-  @ApiResponse({ status: 404, description: 'Informe o archivo físico no encontrado.' })
-  async downloadReport(
-    @Param('id') id: number,
-    @Res() res: express.Response,
-  ) {
+  @ApiResponse({
+    status: 404,
+    description: 'Informe o archivo físico no encontrado.',
+  })
+  async downloadReport(@Param('id') id: number, @Res() res: express.Response) {
     const fileData = await this.informesService.getReportFile(id);
     return res.download(fileData.path, fileData.name);
   }
 
   @Get(':id/view')
-  @ApiOperation({ summary: 'Ver el archivo PDF de la última versión de un informe' })
-  @ApiResponse({ status: 200, description: 'Envío del archivo PDF para visualización.' })
-  @ApiResponse({ status: 404, description: 'Informe o archivo físico no encontrado.' })
-  async viewReport(
-    @Param('id') id: number,
-    @Res() res: express.Response,
-  ) {
+  @ApiOperation({
+    summary: 'Ver el archivo PDF de la última versión de un informe',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Envío del archivo PDF para visualización.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Informe o archivo físico no encontrado.',
+  })
+  async viewReport(@Param('id') id: number, @Res() res: express.Response) {
     const fileData = await this.informesService.getReportFile(id);
     res.setHeader('Content-Disposition', `inline; filename="${fileData.name}"`);
     res.setHeader('Content-Type', 'application/pdf');
@@ -167,23 +202,38 @@ export class InformesController {
       if (err) {
         console.error('[BACKEND] Error al enviar el archivo PDF:', err.message);
         if (!res.headersSent) {
-          res.status(500).json({ message: 'Error al enviar el archivo', error: err.message });
+          res.status(500).json({
+            message: 'Error al enviar el archivo',
+            error: err.message,
+          });
         }
       }
     });
   }
 
   @Get(':periodo/:tipo')
-  @ApiOperation({ summary: 'Obtener los detalles de un informe por periodo y tipo' })
-  @ApiResponse({ status: 200, description: 'Detalles del informe o estructura vacía si no existe.' })
+  @ApiOperation({
+    summary: 'Obtener los detalles de un informe por periodo y tipo',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalles del informe o estructura vacía si no existe.',
+  })
   async getDetalle(
     @Param('periodo') periodo: string,
     @Param('tipo') tipo: string,
     @CurrentUser() user: any,
   ) {
-    console.log(`\n>>> [DEBUG-BACKEND] EJECUTANDO getDetalle | Periodo recibido: ${periodo}, Tipo recibido: ${tipo}`);
+    console.log(
+      `\n>>> [DEBUG-BACKEND] EJECUTANDO getDetalle | Periodo recibido: ${periodo}, Tipo recibido: ${tipo}`,
+    );
     const isCoordinator = user.rol === 'coordinador';
-    return this.informesService.getDetalleReporte(user.sub, periodo, tipo, isCoordinator);
+    return this.informesService.getDetalleReporte(
+      user.sub,
+      periodo,
+      tipo,
+      isCoordinator,
+    );
   }
 
   @Post(':periodo/:tipo/version')
@@ -203,7 +253,10 @@ export class InformesController {
       required: ['archivo'],
     },
   })
-  @ApiResponse({ status: 201, description: 'Nueva versión cargada exitosamente.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Nueva versión cargada exitosamente.',
+  })
   async uploadNuevaVersion(
     @Param('periodo') periodo: string,
     @Param('tipo') tipo: string,
@@ -213,27 +266,76 @@ export class InformesController {
     if (!file) {
       throw new BadRequestException('Archivo PDF requerido');
     }
-    return this.informesService.uploadNuevaVersion(user.sub, file, periodo, tipo);
+    return this.informesService.uploadNuevaVersion(
+      user.sub,
+      file,
+      periodo,
+      tipo,
+    );
   }
 
   @Patch(':periodo/:tipo/estado')
   @Roles('coordinador', 'instructor')
   @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'Cambiar el estado de un informe (Solo Coordinadores e Instructores)' })
+  @ApiOperation({
+    summary:
+      'Cambiar el estado de un informe (instructores: borrador/pendiente; coordinadores: validado/devuelto)',
+  })
   @ApiResponse({ status: 200, description: 'Estado del informe actualizado.' })
+  @ApiResponse({
+    status: 403,
+    description:
+      'Acceso denegado: solo el coordinador puede validar o devolver informes.',
+  })
   async cambiarEstado(
     @Param('periodo') periodo: string,
     @Param('tipo') tipo: string,
     @Body() body: any,
+    @CurrentUser() user: any,
   ) {
-    const estado = body.estado;
-    const observacion = body.observacion;
-    const idUsuario = body.id_usuario || body.usuarioId || body.instructorId || body.userId;
+    const estado: string = body.estado;
+    const observacion: string | undefined = body.observacion;
+    const idUsuario: number | undefined =
+      body.id_usuario || body.usuarioId || body.instructorId || body.userId;
 
     if (!estado) {
       throw new BadRequestException('El campo "estado" es obligatorio');
     }
-    return this.informesService.cambiarEstadoReporte(periodo, tipo, estado, observacion, idUsuario);
+
+    // Normalise for case-insensitive comparison (frontend may send 'validado' or 'Validado')
+    const estadoNorm = estado.toLowerCase();
+
+    // Business-logic guard: only coordinador may set validado or devuelto.
+    // This check runs AFTER the RolesGuard (which allows both roles through).
+    // Instructors can reach this point legitimately when setting 'pendiente' or 'borrador'.
+    if (estadoNorm === 'validado' || estadoNorm === 'devuelto') {
+      if (user.rol !== 'coordinador') {
+        throw new ForbiddenException(
+          'Solo el coordinador puede validar o devolver informes',
+        );
+      }
+
+      // Anti-self-approval: resolve the real owner of the report from the DB.
+      // We do NOT trust body.id_usuario for this check because it can be omitted.
+      const reportOwner = await this.informesService.getReportOwner(
+        periodo,
+        tipo,
+        idUsuario,
+      );
+      if (reportOwner && reportOwner === user.sub) {
+        throw new ForbiddenException(
+          'El coordinador no puede validar o devolver su propio informe',
+        );
+      }
+    }
+
+    return this.informesService.cambiarEstadoReporte(
+      periodo,
+      tipo,
+      estado,
+      observacion,
+      idUsuario,
+    );
   }
 
   @Post()
@@ -249,15 +351,27 @@ export class InformesController {
   }
 
   @Get(':id/pdf-gc')
-  @ApiOperation({ summary: 'Obtener toda la información estructurada de un informe GC para renderizar PDF/Vista de impresión' })
-  @ApiResponse({ status: 200, description: 'Objeto de respuesta estructurada.' })
+  @ApiOperation({
+    summary:
+      'Obtener toda la información estructurada de un informe GC para renderizar PDF/Vista de impresión',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Objeto de respuesta estructurada.',
+  })
   getPdfGc(@Param('id') id: string) {
     return this.informesService.getDatosPdfGc(+id);
   }
 
   @Post(':id/validar')
-  @ApiOperation({ summary: 'Validar la consistencia y estructura de un informe GC con un motor inteligente' })
-  @ApiResponse({ status: 200, description: 'Resultados de validación de 3 niveles.' })
+  @ApiOperation({
+    summary:
+      'Validar la consistencia y estructura de un informe GC con un motor inteligente',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Resultados de validación de 3 niveles.',
+  })
   validar(@Param('id') id: string, @Body() payload: ValidarInformeGcDto) {
     return this.informeGcValidationService.validar(+id, payload);
   }

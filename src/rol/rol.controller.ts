@@ -14,7 +14,12 @@ import { UpdateRolDto } from './dto/update-rol.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('rol')
 @Controller('rol')
@@ -32,7 +37,10 @@ export class RolController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener lista de todos los roles (Disponible sin autenticación para registro)' })
+  @ApiOperation({
+    summary:
+      'Obtener lista de todos los roles (Disponible sin autenticación para registro)',
+  })
   @ApiResponse({ status: 200, description: 'Lista de roles devuelta.' })
   findAll() {
     return this.rolService.findAll();

@@ -53,10 +53,14 @@ export class Informe {
   @DeleteDateColumn({ name: 'deleted_at', nullable: true })
   deleted_at?: Date;
 
-  @OneToOne(() => InformeGc, (informeGc) => informeGc.informe, { cascade: true })
+  @OneToOne(() => InformeGc, (informeGc) => informeGc.informe, {
+    cascade: true,
+  })
   informeGc?: InformeGc;
 
-  @OneToOne(() => InformeGf, (informeGf) => informeGf.informe, { cascade: true })
+  @OneToOne(() => InformeGf, (informeGf) => informeGf.informe, {
+    cascade: true,
+  })
   informeGf?: InformeGf;
 
   @Column({ name: 'observacion', type: 'text', nullable: true })

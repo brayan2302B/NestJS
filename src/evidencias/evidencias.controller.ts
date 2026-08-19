@@ -13,7 +13,12 @@ import { CreateEvidenciaDto } from './dto/create-evidencia.dto';
 import { UpdateEvidenciaDto } from './dto/update-evidencia.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/user.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('evidencias')
 @ApiBearerAuth()
@@ -25,12 +30,19 @@ export class EvidenciasController {
   @Post()
   @ApiOperation({ summary: 'Crear evidencia asociada a una actividad' })
   @ApiResponse({ status: 201, description: 'Evidencia creada exitosamente.' })
-  @ApiResponse({ status: 403, description: 'Acceso prohibido para esta actividad.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso prohibido para esta actividad.',
+  })
   create(
     @Body() createEvidenciaDto: CreateEvidenciaDto,
     @CurrentUser() user: any,
   ) {
-    return this.evidenciasService.create(createEvidenciaDto, user.sub, user.rol);
+    return this.evidenciasService.create(
+      createEvidenciaDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Get()
@@ -61,7 +73,12 @@ export class EvidenciasController {
     @Body() updateEvidenciaDto: UpdateEvidenciaDto,
     @CurrentUser() user: any,
   ) {
-    return this.evidenciasService.update(+id, updateEvidenciaDto, user.sub, user.rol);
+    return this.evidenciasService.update(
+      +id,
+      updateEvidenciaDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Delete(':id')

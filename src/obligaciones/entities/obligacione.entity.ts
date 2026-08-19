@@ -15,7 +15,9 @@ export class Obligacione {
   @PrimaryGeneratedColumn({ name: 'id_obligacion' })
   id_obligacion!: number;
 
-  @ManyToOne(() => Contrato, (contrato) => contrato.obligaciones, { nullable: false })
+  @ManyToOne(() => Contrato, (contrato) => contrato.obligaciones, {
+    nullable: false,
+  })
   @JoinColumn({ name: 'id_contrato' })
   contrato!: Contrato;
 

@@ -14,7 +14,12 @@ import { UpdatePeriodoCargaDto } from './dto/update-periodo-carga.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('periodos-carga')
 @ApiBearerAuth()
@@ -26,8 +31,13 @@ export class PeriodosCargaController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles('coordinador')
-  @ApiOperation({ summary: 'Crear un nuevo periodo de carga de informes (Solo Coordinadores)' })
-  @ApiResponse({ status: 201, description: 'Periodo de carga creado exitosamente.' })
+  @ApiOperation({
+    summary: 'Crear un nuevo periodo de carga de informes (Solo Coordinadores)',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Periodo de carga creado exitosamente.',
+  })
   create(@Body() createPeriodoCargaDto: CreatePeriodoCargaDto) {
     return this.periodosCargaService.create(createPeriodoCargaDto);
   }
@@ -50,7 +60,9 @@ export class PeriodosCargaController {
   @Patch(':id')
   @UseGuards(RolesGuard)
   @Roles('coordinador')
-  @ApiOperation({ summary: 'Actualizar un periodo de carga (Solo Coordinadores)' })
+  @ApiOperation({
+    summary: 'Actualizar un periodo de carga (Solo Coordinadores)',
+  })
   @ApiResponse({ status: 200, description: 'Periodo actualizado.' })
   update(
     @Param('id') id: string,
@@ -62,7 +74,9 @@ export class PeriodosCargaController {
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles('coordinador')
-  @ApiOperation({ summary: 'Eliminar un periodo de carga (Solo Coordinadores)' })
+  @ApiOperation({
+    summary: 'Eliminar un periodo de carga (Solo Coordinadores)',
+  })
   @ApiResponse({ status: 200, description: 'Periodo eliminado.' })
   remove(@Param('id') id: string) {
     return this.periodosCargaService.remove(+id);

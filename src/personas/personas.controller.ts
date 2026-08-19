@@ -24,7 +24,14 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/user.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { signatureMulterOptions } from './multer-config';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 
 @ApiTags('personas')
 @Controller('personas')
@@ -33,14 +40,18 @@ export class PersonasController {
 
   @Post()
   @ApiOperation({ summary: 'Registrar un nuevo usuario' })
-  @ApiResponse({ status: 201, description: 'Usuario registrado exitosamente (pendiente de aprobación).' })
+  @ApiResponse({
+    status: 201,
+    description: 'Usuario registrado exitosamente (pendiente de aprobación).',
+  })
   @ApiResponse({ status: 400, description: 'Datos de entrada inválidos.' })
   @ApiResponse({ status: 409, description: 'Email o Documento ya registrado.' })
   async create(@Body() createPersonaDto: CreatePersonaDto) {
     await this.personasService.create(createPersonaDto);
     return {
       success: true,
-      message: 'Registro exitoso. Su cuenta está pendiente de aprobación por el coordinador.',
+      message:
+        'Registro exitoso. Su cuenta está pendiente de aprobación por el coordinador.',
     };
   }
 
@@ -48,7 +59,9 @@ export class PersonasController {
   @ApiBearerAuth()
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('coordinador')
-  @ApiOperation({ summary: 'Obtener lista de todos los usuarios (Solo Coordinadores)' })
+  @ApiOperation({
+    summary: 'Obtener lista de todos los usuarios (Solo Coordinadores)',
+  })
   @ApiResponse({ status: 200, description: 'Lista de usuarios devuelta.' })
   findAll() {
     return this.personasService.findAll();
@@ -63,7 +76,9 @@ export class PersonasController {
   @ApiResponse({ status: 404, description: 'Usuario no encontrado.' })
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     if (user.rol !== 'coordinador' && user.sub !== +id) {
-      throw new ForbiddenException('No tiene permisos para ver esta información');
+      throw new ForbiddenException(
+        'No tiene permisos para ver esta información',
+      );
     }
     return this.personasService.findOne(+id);
   }
@@ -81,11 +96,21 @@ export class PersonasController {
   ) {
     if (user.rol !== 'coordinador') {
       if (user.sub !== +id) {
-        throw new ForbiddenException('No tiene permisos para modificar este perfil');
+        throw new ForbiddenException(
+          'No tiene permisos para modificar este perfil',
+        );
       }
-      const { estado_cuenta, id_rol, id_area, motivo_rechazo } = updatePersonaDto;
-      if (estado_cuenta !== undefined || id_rol !== undefined || id_area !== undefined || motivo_rechazo !== undefined) {
-        throw new ForbiddenException('No tiene permisos para modificar roles, áreas o estado de cuenta');
+      const { estado_cuenta, id_rol, id_area, motivo_rechazo } =
+        updatePersonaDto;
+      if (
+        estado_cuenta !== undefined ||
+        id_rol !== undefined ||
+        id_area !== undefined ||
+        motivo_rechazo !== undefined
+      ) {
+        throw new ForbiddenException(
+          'No tiene permisos para modificar roles, áreas o estado de cuenta',
+        );
       }
     }
     return this.personasService.update(+id, updatePersonaDto);
@@ -95,7 +120,9 @@ export class PersonasController {
   @Get('me/settings')
   @ApiBearerAuth()
   @UseGuards(JwtGuard)
-  @ApiOperation({ summary: 'Obtener preferencias de notificación del usuario autenticado' })
+  @ApiOperation({
+    summary: 'Obtener preferencias de notificación del usuario autenticado',
+  })
   @ApiResponse({ status: 200, description: 'Preferencias devueltas.' })
   async getSettings(@CurrentUser() user: any) {
     return this.personasService.getSettings(user.sub);
@@ -104,7 +131,9 @@ export class PersonasController {
   @Put('me/settings')
   @ApiBearerAuth()
   @UseGuards(JwtGuard)
-  @ApiOperation({ summary: 'Actualizar preferencias de notificación del usuario autenticado' })
+  @ApiOperation({
+    summary: 'Actualizar preferencias de notificación del usuario autenticado',
+  })
   @ApiResponse({ status: 200, description: 'Preferencias actualizadas.' })
   async updateSettings(
     @CurrentUser() user: any,
@@ -129,7 +158,9 @@ export class PersonasController {
   @UseGuards(JwtGuard)
   @UseInterceptors(FileInterceptor('firma', signatureMulterOptions))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Subir o actualizar la firma digital del usuario autenticado' })
+  @ApiOperation({
+    summary: 'Subir o actualizar la firma digital del usuario autenticado',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -143,11 +174,11 @@ export class PersonasController {
     },
   })
   @ApiResponse({ status: 200, description: 'Firma subida exitosamente.' })
-  @ApiResponse({ status: 400, description: 'Archivo requerido o formato inválido.' })
-  async uploadFirma(
-    @UploadedFile() file: any,
-    @CurrentUser() user: any,
-  ) {
+  @ApiResponse({
+    status: 400,
+    description: 'Archivo requerido o formato inválido.',
+  })
+  async uploadFirma(@UploadedFile() file: any, @CurrentUser() user: any) {
     if (!file) {
       throw new BadRequestException('Archivo de firma requerido');
     }
@@ -155,7 +186,7 @@ export class PersonasController {
     const persona = await this.personasService.findOne(user.sub);
     persona.firma_digital_ruta = signaturePath;
     persona.firma_digital_actualizada_at = new Date();
-    
+
     // Save directly to repository
     const repo = (this.personasService as any).personaRepository;
     await repo.save(persona);
@@ -169,8 +200,13 @@ export class PersonasController {
   @Post('me/firma-base64')
   @ApiBearerAuth()
   @UseGuards(JwtGuard)
-  @ApiOperation({ summary: 'Guardar firma digital proveniente del Canvas (Base64)' })
-  @ApiResponse({ status: 200, description: 'Firma Base64 guardada exitosamente.' })
+  @ApiOperation({
+    summary: 'Guardar firma digital proveniente del Canvas (Base64)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Firma Base64 guardada exitosamente.',
+  })
   @ApiResponse({ status: 400, description: 'Base64 invalido o faltante.' })
   async uploadFirmaBase64(
     @Body() body: { base64: string },
@@ -179,7 +215,10 @@ export class PersonasController {
     if (!body.base64) {
       throw new BadRequestException('El campo base64 es requerido');
     }
-    const signaturePath = await this.personasService.saveSignatureBase64(user.sub, body.base64);
+    const signaturePath = await this.personasService.saveSignatureBase64(
+      user.sub,
+      body.base64,
+    );
     return {
       success: true,
       firma_digital_ruta: signaturePath,

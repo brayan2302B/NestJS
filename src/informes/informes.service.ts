@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { join } from 'path';
@@ -18,7 +23,6 @@ import { Contrato } from '../contratos/entities/contrato.entity';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import { N8nService } from '../n8n/n8n.service';
 import { MailService } from '../mail/mail.service';
-
 
 @Injectable()
 export class InformesService {
@@ -61,6 +65,37 @@ export class InformesService {
     return user;
   }
 
+  /**
+   * Returns the id_usuario of the instructor who owns the given report.
+   * Used by cambiarEstado to verify anti-self-approval without trusting the request body.
+   * If idUsuario hint is provided and a matching report is found, that owner is returned.
+   * If no report is found (e.g. it doesn't exist yet), returns null.
+   */
+  async getReportOwner(
+    periodoStr: string,
+    tipo: string,
+    idUsuario?: number,
+  ): Promise<number | null> {
+    // Reuse the existing parser/finder so we never query by a non-existent 'nombre' column
+    const periodo = await this.findOrCreatePeriodo(periodoStr);
+
+    const whereClause: any = {
+      periodo: { id_periodo: periodo.id_periodo },
+      tipo_informe: tipo.toUpperCase(),
+    };
+    if (idUsuario) {
+      whereClause.usuario = { id_usuario: idUsuario };
+    }
+
+    const report = await this.informeRepository.findOne({
+      where: whereClause as any,
+      relations: { usuario: true },
+    });
+
+    return report?.usuario?.id_usuario ?? null;
+  }
+
+
   async findInstructorReports(idUsuario: number) {
     const reports = await this.informeRepository.find({
       where: { usuario: { id_usuario: idUsuario } },
@@ -85,7 +120,9 @@ export class InformesService {
   }
 
   async findCoordinatorReports(areaId?: number) {
-    const whereClause = areaId ? { usuario: { area: { id_area: areaId } } } : {};
+    const whereClause = areaId
+      ? { usuario: { area: { id_area: areaId } } }
+      : {};
     const reports = await this.informeRepository.find({
       where: whereClause,
       relations: { periodo: true, usuario: { area: true }, versiones: true },
@@ -108,20 +145,28 @@ export class InformesService {
     return reports;
   }
 
-  async findHistorial(idUsuario: number, isCoordinator: boolean, areaId?: number) {
+  async findHistorial(
+    idUsuario: number,
+    isCoordinator: boolean,
+    areaId?: number,
+  ) {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    const query = this.informeRepository.createQueryBuilder('informe')
+    const query = this.informeRepository
+      .createQueryBuilder('informe')
       .leftJoinAndSelect('informe.periodo', 'periodo')
       .leftJoinAndSelect('informe.usuario', 'usuario')
       .leftJoinAndSelect('usuario.area', 'area')
       .leftJoinAndSelect('informe.versiones', 'versiones')
-      .where('(periodo.anio < :currentYear OR (periodo.anio = :currentYear AND periodo.mes < :currentMonth))', {
-        currentYear,
-        currentMonth,
-      });
+      .where(
+        '(periodo.anio < :currentYear OR (periodo.anio = :currentYear AND periodo.mes < :currentMonth))',
+        {
+          currentYear,
+          currentMonth,
+        },
+      );
 
     if (!isCoordinator) {
       query.andWhere('usuario.id_usuario = :idUsuario', { idUsuario });
@@ -129,27 +174,35 @@ export class InformesService {
       query.andWhere('area.id_area = :areaId', { areaId });
     }
 
-    query.orderBy('periodo.anio', 'DESC')
-         .addOrderBy('periodo.mes', 'DESC')
-         .addOrderBy('versiones.numero_version', 'DESC');
+    query
+      .orderBy('periodo.anio', 'DESC')
+      .addOrderBy('periodo.mes', 'DESC')
+      .addOrderBy('versiones.numero_version', 'DESC');
 
     return query.getMany();
   }
 
-  async getEstadisticas(filtros: { instructorId?: number; mes?: string; areaId?: number }) {
-    const qb = this.informeRepository.createQueryBuilder('informe')
+  async getEstadisticas(filtros: {
+    instructorId?: number;
+    mes?: string;
+    areaId?: number;
+  }) {
+    const qb = this.informeRepository
+      .createQueryBuilder('informe')
       .leftJoinAndSelect('informe.usuario', 'usuario')
       .leftJoinAndSelect('usuario.area', 'area')
       .leftJoinAndSelect('informe.periodo', 'periodo');
 
     if (filtros.instructorId) {
-      qb.andWhere('usuario.id_usuario = :instructorId', { instructorId: filtros.instructorId });
+      qb.andWhere('usuario.id_usuario = :instructorId', {
+        instructorId: filtros.instructorId,
+      });
     }
-    
+
     if (filtros.areaId) {
       qb.andWhere('area.id_area = :areaId', { areaId: filtros.areaId });
     }
-    
+
     if (filtros.mes) {
       const { mes, anio } = this.parsePeriod(filtros.mes);
       qb.andWhere('periodo.mes = :mes AND periodo.anio = :anio', { mes, anio });
@@ -162,19 +215,26 @@ export class InformesService {
     let pendientes = 0;
     const cumplimientoPorInstructor: Record<string, any> = {};
 
-    informes.forEach(informe => {
-      const isApproved = informe.estado === 'validado' || informe.estado === 'aprobado';
-      const isRejected = informe.estado === 'devuelto' || informe.estado === 'rechazado';
-      
+    informes.forEach((informe) => {
+      const isApproved =
+        informe.estado === 'validado' || informe.estado === 'aprobado';
+      const isRejected =
+        informe.estado === 'devuelto' || informe.estado === 'rechazado';
+
       if (isApproved) aprobados++;
       else if (isRejected) devueltos++;
       else pendientes++;
 
       const nombre = informe.usuario.nombre_completo;
       if (!cumplimientoPorInstructor[nombre]) {
-        cumplimientoPorInstructor[nombre] = { totales: 0, aprobados: 0, devueltos: 0, pendientes: 0 };
+        cumplimientoPorInstructor[nombre] = {
+          totales: 0,
+          aprobados: 0,
+          devueltos: 0,
+          pendientes: 0,
+        };
       }
-      
+
       cumplimientoPorInstructor[nombre].totales++;
       if (isApproved) cumplimientoPorInstructor[nombre].aprobados++;
       else if (isRejected) cumplimientoPorInstructor[nombre].devueltos++;
@@ -182,7 +242,8 @@ export class InformesService {
     });
 
     const totales = informes.length;
-    const porcentaje_cumplimiento = totales > 0 ? (aprobados / totales) * 100 : 0;
+    const porcentaje_cumplimiento =
+      totales > 0 ? (aprobados / totales) * 100 : 0;
 
     return {
       metricas: {
@@ -198,12 +259,17 @@ export class InformesService {
           Aprobados: aprobados,
           Rechazados: devueltos,
           Pendientes: pendientes,
-        }
-      }
+        },
+      },
     };
   }
 
-  async uploadReport(idUsuario: number, file: any, periodoStr: string, tipo: string) {
+  async uploadReport(
+    idUsuario: number,
+    file: any,
+    periodoStr: string,
+    tipo: string,
+  ) {
     const user = await this.getUserWithArea(idUsuario);
     const periodo = await this.findOrCreatePeriodo(periodoStr);
     const tipoInforme = tipo.toUpperCase();
@@ -281,7 +347,10 @@ export class InformesService {
     await this.versionRepository.save(version);
 
     // Set report status to 'borrador' avoiding cascade validation issues
-    await this.informeRepository.update({ id_informe: informe.id_informe }, { estado: 'borrador' });
+    await this.informeRepository.update(
+      { id_informe: informe.id_informe },
+      { estado: 'borrador' },
+    );
 
     this.n8nService.notifyAction('informe_cargado', {
       id_informe: informe.id_informe,
@@ -298,7 +367,12 @@ export class InformesService {
     });
   }
 
-  async uploadNuevaVersion(idUsuario: number, file: any, periodoStr: string, tipo: string) {
+  async uploadNuevaVersion(
+    idUsuario: number,
+    file: any,
+    periodoStr: string,
+    tipo: string,
+  ) {
     const periodo = await this.findOrCreatePeriodo(periodoStr);
     const tipoInforme = tipo.toUpperCase();
 
@@ -318,8 +392,15 @@ export class InformesService {
 
     // Check highest (latest) version status if versions exist
     if (informe.versiones && informe.versiones.length > 0) {
-      const highestVersionObj = informe.versiones.reduce((max, v) => v.numero_version > max.numero_version ? v : max, informe.versiones[0]);
-      if (highestVersionObj && (highestVersionObj.estado === 'validado' || highestVersionObj.estado === 'aprobado')) {
+      const highestVersionObj = informe.versiones.reduce(
+        (max, v) => (v.numero_version > max.numero_version ? v : max),
+        informe.versiones[0],
+      );
+      if (
+        highestVersionObj &&
+        (highestVersionObj.estado === 'validado' ||
+          highestVersionObj.estado === 'aprobado')
+      ) {
         throw new BadRequestException(
           `El informe ${tipoInforme} del período ${periodoStr} ya fue validado en su versión más reciente (V${highestVersionObj.numero_version}) y no puede recibir nuevas versiones.`,
         );
@@ -333,13 +414,15 @@ export class InformesService {
     // Determine new version number
     let nextVersionNumber = 1;
     if (informe.versiones && informe.versiones.length > 0) {
-      const highestVersion = Math.max(...informe.versiones.map(v => v.numero_version));
+      const highestVersion = Math.max(
+        ...informe.versiones.map((v) => v.numero_version),
+      );
       nextVersionNumber = highestVersion + 1;
     }
 
     // Create the new version record
     const version = this.versionRepository.create({
-      informe: { id_informe: informe.id_informe } as any,
+      informe: { id_informe: informe.id_informe },
       numero_version: nextVersionNumber,
       archivo_ruta: file.path.replace(/\\/g, '/'),
       archivo_nombre_original: file.originalname,
@@ -351,7 +434,7 @@ export class InformesService {
     // Reset report state to borrador and clear old observations using update to avoid cascade issues
     await this.informeRepository.update(
       { id_informe: informe.id_informe },
-      { estado: 'borrador', observacion: null as any }
+      { estado: 'borrador', observacion: null },
     );
 
     this.n8nService.notifyAction('informe_cargado', {
@@ -368,7 +451,12 @@ export class InformesService {
     });
   }
 
-  async getDetalleReporte(idUsuario: number, periodoStr: string, tipo: string, isCoordinator: boolean) {
+  async getDetalleReporte(
+    idUsuario: number,
+    periodoStr: string,
+    tipo: string,
+    isCoordinator: boolean,
+  ) {
     const periodo = await this.findOrCreatePeriodo(periodoStr);
     const tipoInforme = tipo.toUpperCase();
 
@@ -440,14 +528,18 @@ export class InformesService {
     if (!report) {
       // ── UPSERT: crear el informe si no existe (bot puede registrarlo directamente) ──
       if (!idUsuario) {
-        throw new NotFoundException(`Informe de tipo ${tipoInforme} para el periodo ${periodoStr} no encontrado`);
+        throw new NotFoundException(
+          `Informe de tipo ${tipoInforme} para el periodo ${periodoStr} no encontrado`,
+        );
       }
       const persona = await this.personaRepository.findOne({
         where: { id_usuario: idUsuario },
         relations: { area: true, rol: true },
       });
       if (!persona) {
-        throw new NotFoundException(`Usuario con id ${idUsuario} no encontrado`);
+        throw new NotFoundException(
+          `Usuario con id ${idUsuario} no encontrado`,
+        );
       }
       const newInforme = this.informeRepository.create({
         usuario: persona,
@@ -473,11 +565,19 @@ export class InformesService {
           await this.contratoRepository.save(contrato);
         }
         await this.informeGcRepository.save(
-          this.informeGcRepository.create({ informe: saved, contrato, version_formato: 'GTH-F-062 V10' }),
+          this.informeGcRepository.create({
+            informe: saved,
+            contrato,
+            version_formato: 'GTH-F-062 V10',
+          }),
         );
       } else {
         await this.informeGfRepository.save(
-          this.informeGfRepository.create({ informe: saved, version_formato: 'GF-F-001 V2', valor_total: 0 }),
+          this.informeGfRepository.create({
+            informe: saved,
+            version_formato: 'GF-F-001 V2',
+            valor_total: 0,
+          }),
         );
       }
 
@@ -487,7 +587,12 @@ export class InformesService {
         relations: { versiones: true, usuario: true, periodo: true },
       });
       // Fall through: the code below will update estado/observacion on newReport
-      return this.updateInformeEstado(newReport!, estado, observacion, periodoStr);
+      return this.updateInformeEstado(
+        newReport,
+        estado,
+        observacion,
+        periodoStr,
+      );
     }
 
     // Delegate to shared helper
@@ -532,7 +637,9 @@ export class InformesService {
         if (!instructor || !instructor.correo) {
           const userId = report.usuario?.id_usuario;
           if (userId) {
-            instructor = (await this.personaRepository.findOne({ where: { id_usuario: userId } })) as Persona;
+            instructor = await this.personaRepository.findOne({
+              where: { id_usuario: userId },
+            });
           }
         }
 
@@ -561,20 +668,21 @@ export class InformesService {
     // Disparar notificación automática al propietario del informe (respetando sus preferencias)
     if (report.usuario) {
       const typeMap: Record<string, string> = {
-        'validado': 'success',
-        'devuelto': 'error',
-        'borrador': 'info',
-        'pendiente': 'warning',
+        validado: 'success',
+        devuelto: 'error',
+        borrador: 'info',
+        pendiente: 'warning',
       };
       const cleanType = typeMap[mappedEstado] || 'info';
 
       // Leer preferencias del usuario y verificar si este tipo de notificación está habilitado
-      const prefs: Record<string, unknown> = (report.usuario as any).preferencias_notificaciones ?? {};
+      const prefs: Record<string, unknown> =
+        (report.usuario as any).preferencias_notificaciones ?? {};
       const flagMap: Record<string, string> = {
-        'validado': 'notif_aprobacion',
-        'devuelto': 'notif_aprobacion',
-        'pendiente': 'notif_nuevos',
-        'borrador': 'notif_pendientes',
+        validado: 'notif_aprobacion',
+        devuelto: 'notif_aprobacion',
+        pendiente: 'notif_nuevos',
+        borrador: 'notif_pendientes',
       };
       const prefKey = flagMap[mappedEstado];
       // Only skip if the preference is explicitly set to false
@@ -589,7 +697,7 @@ export class InformesService {
           report.usuario.id_usuario,
           message,
           cleanType as any,
-          false // El correo ya fue enviado arriba mediante sendReportStatusEmail
+          false, // El correo ya fue enviado arriba mediante sendReportStatusEmail
         );
       }
     }
@@ -609,7 +717,6 @@ export class InformesService {
     });
   }
 
-
   async deleteLastVersion(id: number) {
     const report = await this.informeRepository.findOne({
       where: { id_informe: id },
@@ -621,7 +728,9 @@ export class InformesService {
     }
 
     if (!report.versiones || report.versiones.length === 0) {
-      throw new BadRequestException(`El informe #${id} no tiene ninguna versión para eliminar`);
+      throw new BadRequestException(
+        `El informe #${id} no tiene ninguna versión para eliminar`,
+      );
     }
 
     // Sort versions to find the latest
@@ -635,20 +744,31 @@ export class InformesService {
     try {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
-        console.log(`>>> [DEBUG-BACKEND] Archivo físico eliminado: ${filePath}`);
+        console.log(
+          `>>> [DEBUG-BACKEND] Archivo físico eliminado: ${filePath}`,
+        );
       } else {
-        console.warn(`>>> [DEBUG-BACKEND] Archivo físico no encontrado al eliminar: ${filePath}`);
+        console.warn(
+          `>>> [DEBUG-BACKEND] Archivo físico no encontrado al eliminar: ${filePath}`,
+        );
       }
     } catch (err: any) {
-      console.error(`>>> [DEBUG-BACKEND] Error al eliminar archivo físico:`, err);
+      console.error(
+        `>>> [DEBUG-BACKEND] Error al eliminar archivo físico:`,
+        err,
+      );
     }
 
     // 2. Delete version record from database
     await this.versionRepository.remove(latestVersion);
-    console.log(`>>> [DEBUG-BACKEND] Registro de versión V${latestVersion.numero_version} eliminado.`);
+    console.log(
+      `>>> [DEBUG-BACKEND] Registro de versión V${latestVersion.numero_version} eliminado.`,
+    );
 
     // 3. Update report state
-    const remainingVersions = report.versiones.filter(v => v.id_version !== latestVersion.id_version);
+    const remainingVersions = report.versiones.filter(
+      (v) => v.id_version !== latestVersion.id_version,
+    );
     if (remainingVersions.length > 0) {
       // Re-sort remaining to find the new latest version
       remainingVersions.sort((a, b) => b.numero_version - a.numero_version);
@@ -659,10 +779,16 @@ export class InformesService {
     } else {
       // No versions left, delete the report completely (so instructor can start from scratch)
       // Since cascade details could vary, we can delete GC/GF children first
-      await this.informeGcRepository.delete({ informe: { id_informe: report.id_informe } });
-      await this.informeGfRepository.delete({ informe: { id_informe: report.id_informe } });
+      await this.informeGcRepository.delete({
+        informe: { id_informe: report.id_informe },
+      });
+      await this.informeGfRepository.delete({
+        informe: { id_informe: report.id_informe },
+      });
       await this.informeRepository.remove(report);
-      console.log(`>>> [DEBUG-BACKEND] Informe #${id} eliminado completo por no tener versiones.`);
+      console.log(
+        `>>> [DEBUG-BACKEND] Informe #${id} eliminado completo por no tener versiones.`,
+      );
       return { id_informe: null, estado: 'No cargado', versiones: [] };
     }
 
@@ -679,21 +805,44 @@ export class InformesService {
     const regex = /([a-zA-ZáéíóúÁÉÍÓÚ]+)[-\s]+(\d{4})/;
     const match = trimmed.match(regex);
     if (!match) {
-      throw new BadRequestException('Formato de periodo inválido. Use "Mes Año" (ej: "Julio 2026")');
+      throw new BadRequestException(
+        'Formato de periodo inválido. Use "Mes Año" (ej: "Julio 2026")',
+      );
     }
-    const mesStr = match[1].toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // remove accents
+    const mesStr = match[1]
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // remove accents
     const anio = parseInt(match[2]);
 
     const mesesMap: Record<string, number> = {
       // Nombres completos
-      enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
-      julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+      enero: 1,
+      febrero: 2,
+      marzo: 3,
+      abril: 4,
+      mayo: 5,
+      junio: 6,
+      julio: 7,
+      agosto: 8,
+      septiembre: 9,
+      octubre: 10,
+      noviembre: 11,
+      diciembre: 12,
       // Abreviaturas de 3 letras (como las usa n8n con los nombres de archivo)
-      ene: 1, feb: 2, mar: 3, abr: 4, may: 5, jun: 6,
-      jul: 7, ago: 8, sep: 9, oct: 10, nov: 11, dic: 12,
+      ene: 1,
+      feb: 2,
+      mar: 3,
+      abr: 4,
+      may: 5,
+      jun: 6,
+      jul: 7,
+      ago: 8,
+      sep: 9,
+      oct: 10,
+      nov: 11,
+      dic: 12,
     };
-
 
     const mes = mesesMap[mesStr];
     if (!mes) {
@@ -731,7 +880,9 @@ export class InformesService {
   }
 
   findAll() {
-    return this.informeRepository.find({ relations: { usuario: true, periodo: true } });
+    return this.informeRepository.find({
+      relations: { usuario: true, periodo: true },
+    });
   }
 
   findOne(id: number) {
@@ -754,7 +905,10 @@ export class InformesService {
       relations: {
         usuario: { area: true, rol: true },
         periodo: true,
-        informeGc: { contrato: { obligaciones: true, usuario: true }, actividades: { evidencias: true } },
+        informeGc: {
+          contrato: { obligaciones: true, usuario: true },
+          actividades: { evidencias: true },
+        },
       },
     });
 
@@ -763,12 +917,19 @@ export class InformesService {
     }
 
     if (informe.tipo_informe !== 'GC' || !informe.informeGc) {
-      throw new BadRequestException('El informe no está asociado a un formato GC válido');
+      throw new BadRequestException(
+        'El informe no está asociado a un formato GC válido',
+      );
     }
 
     const actividades = informe.informeGc.actividades ?? [];
-    const totalEvidencias = actividades.reduce((sum, actividad) => sum + (actividad.evidencias?.length ?? 0), 0);
-    const actividadesPorCompetencia = actividades.reduce<Record<string, number>>((acc, actividad) => {
+    const totalEvidencias = actividades.reduce(
+      (sum, actividad) => sum + (actividad.evidencias?.length ?? 0),
+      0,
+    );
+    const actividadesPorCompetencia = actividades.reduce<
+      Record<string, number>
+    >((acc, actividad) => {
       acc[actividad.competencia] = (acc[actividad.competencia] ?? 0) + 1;
       return acc;
     }, {});
@@ -787,7 +948,9 @@ export class InformesService {
         estado: informe.estado,
         firmado: informe.firmado,
         pendiente_sincronizacion: informe.pendiente_sincronizacion,
-        fecha_envio: informe.fecha_envio ? informe.fecha_envio.toISOString() : null,
+        fecha_envio: informe.fecha_envio
+          ? informe.fecha_envio.toISOString()
+          : null,
         version_formato: informe.informeGc.version_formato,
       },
       instructor: {
@@ -813,21 +976,37 @@ export class InformesService {
       },
       contrato: {
         id_contrato: informe.informeGc.contrato.id_contrato,
-        fecha_inicio: informe.informeGc.contrato.fecha_inicio.toISOString().slice(0, 10),
-        fecha_fin: informe.informeGc.contrato.fecha_fin.toISOString().slice(0, 10),
+        fecha_inicio: informe.informeGc.contrato.fecha_inicio
+          .toISOString()
+          .slice(0, 10),
+        fecha_fin: informe.informeGc.contrato.fecha_fin
+          .toISOString()
+          .slice(0, 10),
         estado: informe.informeGc.contrato.estado,
-        obligaciones: (informe.informeGc.contrato.obligaciones ?? []).map((obligacion) => ({
-          id_obligacion: obligacion.id_obligacion,
-          descripcion: obligacion.descripcion,
-        })),
+        obligaciones: (informe.informeGc.contrato.obligaciones ?? []).map(
+          (obligacion) => ({
+            id_obligacion: obligacion.id_obligacion,
+            descripcion: obligacion.descripcion,
+          }),
+        ),
       },
       coordinador: coordinador
         ? {
             id_usuario: coordinador.id_usuario,
             nombre_completo: coordinador.nombre_completo,
             correo: coordinador.correo,
-            area: coordinador.area ? { id_area: coordinador.area.id_area, nombre_area: coordinador.area.nombre_area } : null,
-            rol: coordinador.rol ? { id_rol: coordinador.rol.id_rol, nombre_rol: coordinador.rol.nombre_rol } : null,
+            area: coordinador.area
+              ? {
+                  id_area: coordinador.area.id_area,
+                  nombre_area: coordinador.area.nombre_area,
+                }
+              : null,
+            rol: coordinador.rol
+              ? {
+                  id_rol: coordinador.rol.id_rol,
+                  nombre_rol: coordinador.rol.nombre_rol,
+                }
+              : null,
           }
         : null,
       actividades: actividades.map((actividad) => ({
@@ -870,7 +1049,9 @@ export class InformesService {
     }
 
     if (!report.versiones || report.versiones.length === 0) {
-      throw new NotFoundException(`El informe #${id} no tiene archivos cargados`);
+      throw new NotFoundException(
+        `El informe #${id} no tiene archivos cargados`,
+      );
     }
 
     // Get the latest version

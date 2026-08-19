@@ -10,11 +10,18 @@ export class CreatePeriodoCargaDto {
   @IsInt()
   mes!: number;
 
-  @ApiProperty({ description: 'Fecha límite de entrega de los informes', example: '2026-07-31' })
+  @ApiProperty({
+    description: 'Fecha límite de entrega de los informes',
+    example: '2026-07-31',
+  })
   @IsDateString()
   fecha_limite!: string;
 
-  @ApiProperty({ description: 'Indica si el periodo está habilitado para carga', default: true, example: true })
+  @ApiProperty({
+    description: 'Indica si el periodo está habilitado para carga',
+    default: true,
+    example: true,
+  })
   @IsOptional()
   @IsBoolean()
   habilitado?: boolean;

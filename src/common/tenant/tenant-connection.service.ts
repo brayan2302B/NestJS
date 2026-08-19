@@ -24,7 +24,11 @@ export class TenantConnectionService implements OnModuleDestroy {
     const sanitizedTenantId = (tenantId || 'default').toLowerCase().trim();
 
     // Si es el tenant por defecto y contamos con la conexión principal, la devolvemos inmediatamente
-    if (sanitizedTenantId === 'default' && defaultDataSource && defaultDataSource.isInitialized) {
+    if (
+      sanitizedTenantId === 'default' &&
+      defaultDataSource &&
+      defaultDataSource.isInitialized
+    ) {
       return defaultDataSource;
     }
 
@@ -32,16 +36,19 @@ export class TenantConnectionService implements OnModuleDestroy {
 
     // Si ya tenemos una conexión abierta y activa en la caché del pool, la reutilizamos
     if (this.connectionPool.has(poolKey)) {
-      const existingDs = this.connectionPool.get(poolKey)!;
+      const existingDs = this.connectionPool.get(poolKey);
       if (existingDs.isInitialized) {
         return existingDs;
       }
     }
 
     // De lo contrario, creamos dinámicamente la nueva conexión
-    this.logger.log(`Inicializando conexión dinámica para tenant: "${sanitizedTenantId}" (${dbType})`);
+    this.logger.log(
+      `Inicializando conexión dinámica para tenant: "${sanitizedTenantId}" (${dbType})`,
+    );
 
-    const isPostgres = this.configService.get<string>('DB_TYPE', 'sqlite') === 'postgres';
+    const isPostgres =
+      this.configService.get<string>('DB_TYPE', 'sqlite') === 'postgres';
     const dbFileName = `${dbType}_${sanitizedTenantId}.db`;
     const dbPath = join(process.cwd(), dbFileName);
 
@@ -73,7 +80,9 @@ export class TenantConnectionService implements OnModuleDestroy {
 
     await newDs.initialize();
     this.connectionPool.set(poolKey, newDs);
-    this.logger.log(`Conexión lista para tenant "${sanitizedTenantId}" (${dbType})`);
+    this.logger.log(
+      `Conexión lista para tenant "${sanitizedTenantId}" (${dbType})`,
+    );
 
     return newDs;
   }

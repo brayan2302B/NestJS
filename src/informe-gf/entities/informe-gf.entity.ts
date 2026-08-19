@@ -22,7 +22,13 @@ export class InformeGf {
   @Column({ name: 'version_formato', type: 'varchar', length: 50 })
   version_formato!: string;
 
-  @Column({ name: 'valor_total', type: 'numeric', precision: 14, scale: 2, default: 0 })
+  @Column({
+    name: 'valor_total',
+    type: 'numeric',
+    precision: 14,
+    scale: 2,
+    default: 0,
+  })
   valor_total!: number;
 
   @Column({ name: 'observaciones', type: 'text', nullable: true })

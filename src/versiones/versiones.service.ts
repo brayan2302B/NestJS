@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Version } from './entities/version.entity';
@@ -17,7 +21,11 @@ export class VersionesService {
     private readonly informeRepository: Repository<Informe>,
   ) {}
 
-  async create(createVersionDto: CreateVersionDto, userId: number, userRol: string) {
+  async create(
+    createVersionDto: CreateVersionDto,
+    userId: number,
+    userRol: string,
+  ) {
     if (!createVersionDto.id_informe) {
       throw new NotFoundException('Debe asociar la versión a un informe');
     }
@@ -28,16 +36,22 @@ export class VersionesService {
     });
 
     if (!informe) {
-      throw new NotFoundException(`Informe #${createVersionDto.id_informe} no encontrado`);
+      throw new NotFoundException(
+        `Informe #${createVersionDto.id_informe} no encontrado`,
+      );
     }
 
     if (userRol !== 'coordinador' && informe.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para agregar versiones a este informe');
+      throw new ForbiddenException(
+        'No tiene permisos para agregar versiones a este informe',
+      );
     }
 
     const version = this.versionRepository.create({
       numero_version: createVersionDto.numero_version,
-      fecha_version: createVersionDto.fecha_version ? new Date(createVersionDto.fecha_version) : new Date(),
+      fecha_version: createVersionDto.fecha_version
+        ? new Date(createVersionDto.fecha_version)
+        : new Date(),
       descripcion: createVersionDto.descripcion,
       estado: createVersionDto.estado || 'pendiente',
       archivo_ruta: createVersionDto.archivo_ruta || '',
@@ -50,7 +64,9 @@ export class VersionesService {
   }
 
   findAll() {
-    return this.versionRepository.find({ relations: { informe: { usuario: true } } });
+    return this.versionRepository.find({
+      relations: { informe: { usuario: true } },
+    });
   }
 
   findByUserId(userId: number) {
@@ -69,7 +85,12 @@ export class VersionesService {
     return version;
   }
 
-  async update(id: number, updateVersionDto: UpdateVersionDto, userId: number, userRol: string) {
+  async update(
+    id: number,
+    updateVersionDto: UpdateVersionDto,
+    userId: number,
+    userRol: string,
+  ) {
     const version = await this.findOne(id);
     await this.checkOwnership(id, userId, userRol);
 
@@ -89,7 +110,8 @@ export class VersionesService {
       version.archivo_ruta = updateVersionDto.archivo_ruta;
     }
     if (updateVersionDto.archivo_nombre_original !== undefined) {
-      version.archivo_nombre_original = updateVersionDto.archivo_nombre_original;
+      version.archivo_nombre_original =
+        updateVersionDto.archivo_nombre_original;
     }
     if (updateVersionDto.archivo_tamano_bytes !== undefined) {
       version.archivo_tamano_bytes = updateVersionDto.archivo_tamano_bytes;
@@ -100,10 +122,14 @@ export class VersionesService {
         relations: { usuario: true },
       });
       if (!informe) {
-        throw new NotFoundException(`Informe #${updateVersionDto.id_informe} no encontrado`);
+        throw new NotFoundException(
+          `Informe #${updateVersionDto.id_informe} no encontrado`,
+        );
       }
       if (userRol !== 'coordinador' && informe.usuario?.id_usuario !== userId) {
-        throw new ForbiddenException('No tiene permisos para mover la versión a este informe');
+        throw new ForbiddenException(
+          'No tiene permisos para mover la versión a este informe',
+        );
       }
       version.informe = informe;
     }
@@ -121,7 +147,9 @@ export class VersionesService {
     if (userRol === 'coordinador') return;
     const version = await this.findOne(idVersion);
     if (version.informe?.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para acceder a esta versión');
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a esta versión',
+      );
     }
   }
 
@@ -135,7 +163,9 @@ export class VersionesService {
     }
     const filePath = join(process.cwd(), version.archivo_ruta);
     if (!existsSync(filePath)) {
-      throw new NotFoundException('El archivo físico de esta versión no existe en el servidor');
+      throw new NotFoundException(
+        'El archivo físico de esta versión no existe en el servidor',
+      );
     }
     return {
       path: filePath,

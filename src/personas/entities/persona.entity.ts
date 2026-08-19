@@ -22,7 +22,12 @@ export class Persona {
   @Column({ name: 'tipo_documento', type: 'varchar', length: 2 })
   tipo_documento!: string;
 
-  @Column({ name: 'numero_documento', type: 'varchar', length: 20, unique: true })
+  @Column({
+    name: 'numero_documento',
+    type: 'varchar',
+    length: 20,
+    unique: true,
+  })
   numero_documento!: string;
 
   @Column({ name: 'correo', type: 'varchar', length: 150, unique: true })
@@ -39,19 +44,42 @@ export class Persona {
   @JoinColumn({ name: 'id_area' })
   area?: Area;
 
-  @Column({ name: 'estado_cuenta', type: 'varchar', length: 20, default: 'pendiente' })
+  @Column({
+    name: 'estado_cuenta',
+    type: 'varchar',
+    length: 20,
+    default: 'pendiente',
+  })
   estado_cuenta!: string;
 
-  @Column({ name: 'carpeta_drive_url', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'carpeta_drive_url',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   carpeta_drive_url?: string;
 
-  @Column({ name: 'firma_digital_ruta', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'firma_digital_ruta',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   firma_digital_ruta?: string;
 
-  @Column({ name: 'firma_digital_actualizada_at', type: 'timestamp', nullable: true })
+  @Column({
+    name: 'firma_digital_actualizada_at',
+    type: 'timestamp',
+    nullable: true,
+  })
   firma_digital_actualizada_at?: Date;
 
-  @Column({ name: 'preferencias_notificaciones', type: 'simple-json', default: '{}' })
+  @Column({
+    name: 'preferencias_notificaciones',
+    type: 'simple-json',
+    default: '{}',
+  })
   preferencias_notificaciones!: Record<string, unknown>;
 
   @Column({ name: 'aprobado_por_id', type: 'int', nullable: true })
@@ -60,7 +88,12 @@ export class Persona {
   @Column({ name: 'fecha_aprobacion', type: 'timestamp', nullable: true })
   fecha_aprobacion?: Date;
 
-  @Column({ name: 'motivo_rechazo', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'motivo_rechazo',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   motivo_rechazo?: string;
 
   @Column({ name: 'reset_token', type: 'varchar', length: 255, nullable: true })

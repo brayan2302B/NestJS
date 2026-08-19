@@ -1,4 +1,11 @@
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateInformeDto {
   @IsInt()
@@ -24,5 +31,3 @@ export class CreateInformeDto {
   @IsBoolean()
   pendiente_sincronizacion?: boolean;
 }
-
-

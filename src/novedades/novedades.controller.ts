@@ -14,7 +14,12 @@ import { UpdateNovedadDto } from './dto/update-novedad.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('novedades')
 @ApiBearerAuth()
@@ -26,7 +31,9 @@ export class NovedadesController {
   @Post()
   @UseGuards(RolesGuard)
   @Roles('coordinador')
-  @ApiOperation({ summary: 'Crear una novedad en un reporte (Solo Coordinadores)' })
+  @ApiOperation({
+    summary: 'Crear una novedad en un reporte (Solo Coordinadores)',
+  })
   @ApiResponse({ status: 201, description: 'Novedad registrada exitosamente.' })
   create(@Body() createNovedadDto: CreateNovedadDto) {
     return this.novedadesService.create(createNovedadDto);

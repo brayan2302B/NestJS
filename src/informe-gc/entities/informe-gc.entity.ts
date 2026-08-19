@@ -27,7 +27,12 @@ export class InformeGc {
   @JoinColumn({ name: 'id_contrato' })
   contrato!: Contrato;
 
-  @Column({ name: 'version_formato', type: 'varchar', length: 20, default: 'GTH-F-062 V10' })
+  @Column({
+    name: 'version_formato',
+    type: 'varchar',
+    length: 20,
+    default: 'GTH-F-062 V10',
+  })
   version_formato!: string;
 
   @CreateDateColumn({ name: 'created_at' })

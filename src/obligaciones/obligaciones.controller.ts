@@ -13,7 +13,12 @@ import { CreateObligacioneDto } from './dto/create-obligacione.dto';
 import { UpdateObligacioneDto } from './dto/update-obligacione.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/user.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('obligaciones')
 @ApiBearerAuth()
@@ -23,14 +28,24 @@ export class ObligacionesController {
   constructor(private readonly obligacionesService: ObligacionesService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear una obligación contractual vinculada a un contrato del usuario' })
+  @ApiOperation({
+    summary:
+      'Crear una obligación contractual vinculada a un contrato del usuario',
+  })
   @ApiResponse({ status: 201, description: 'Obligación creada exitosamente.' })
-  @ApiResponse({ status: 403, description: 'Acceso prohibido para este contrato.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso prohibido para este contrato.',
+  })
   create(
     @Body() createObligacioneDto: CreateObligacioneDto,
     @CurrentUser() user: any,
   ) {
-    return this.obligacionesService.create(createObligacioneDto, user.sub, user.rol);
+    return this.obligacionesService.create(
+      createObligacioneDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Get()
@@ -61,7 +76,12 @@ export class ObligacionesController {
     @Body() updateObligacioneDto: UpdateObligacioneDto,
     @CurrentUser() user: any,
   ) {
-    return this.obligacionesService.update(+id, updateObligacioneDto, user.sub, user.rol);
+    return this.obligacionesService.update(
+      +id,
+      updateObligacioneDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Delete(':id')

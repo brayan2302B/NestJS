@@ -32,7 +32,10 @@ export class InformeGcValidationService {
     private readonly periodoCargaRepository: Repository<PeriodoCarga>,
   ) {}
 
-  async validar(idInforme: number, payload: ValidarInformeGcDto): Promise<ResultadoValidacionInformeGcDto> {
+  async validar(
+    idInforme: number,
+    payload: ValidarInformeGcDto,
+  ): Promise<ResultadoValidacionInformeGcDto> {
     const informe = await this.informeRepository.findOne({
       where: { id_informe: idInforme },
       relations: {
@@ -47,7 +50,9 @@ export class InformeGcValidationService {
     }
 
     if (informe.tipo_informe !== 'GC' || !informe.informeGc) {
-      throw new NotFoundException('El informe no está asociado a un formato GC válido');
+      throw new NotFoundException(
+        'El informe no está asociado a un formato GC válido',
+      );
     }
 
     const nivel1 = this.validarNivel1(payload.textoPdf ?? '');
@@ -62,7 +67,10 @@ export class InformeGcValidationService {
     };
   }
 
-  private validarNivel1(textoPdf: string): { valido: boolean; errores: string[] } {
+  private validarNivel1(textoPdf: string): {
+    valido: boolean;
+    errores: string[];
+  } {
     const errores: string[] = [];
     const texto = (textoPdf || '').toUpperCase();
 
@@ -94,11 +102,21 @@ export class InformeGcValidationService {
   private async validarNivel2(
     informe: Informe,
     payload: ValidarInformeGcDto,
-  ): Promise<{ valido: boolean; discrepancias: Array<{ campo: string; valorPdf: string; valorBD: string }> }> {
-    const discrepancias: Array<{ campo: string; valorPdf: string; valorBD: string }> = [];
+  ): Promise<{
+    valido: boolean;
+    discrepancias: Array<{ campo: string; valorPdf: string; valorBD: string }>;
+  }> {
+    const discrepancias: Array<{
+      campo: string;
+      valorPdf: string;
+      valorBD: string;
+    }> = [];
 
     if (payload.nombreContratista && informe.usuario?.nombre_completo) {
-      if (payload.nombreContratista.trim().toLowerCase() !== informe.usuario.nombre_completo.trim().toLowerCase()) {
+      if (
+        payload.nombreContratista.trim().toLowerCase() !==
+        informe.usuario.nombre_completo.trim().toLowerCase()
+      ) {
         discrepancias.push({
           campo: 'nombreContratista',
           valorPdf: payload.nombreContratista,
@@ -108,7 +126,10 @@ export class InformeGcValidationService {
     }
 
     if (payload.cedulaContratista && informe.usuario?.numero_documento) {
-      if (payload.cedulaContratista.trim() !== informe.usuario.numero_documento.trim()) {
+      if (
+        payload.cedulaContratista.trim() !==
+        informe.usuario.numero_documento.trim()
+      ) {
         discrepancias.push({
           campo: 'cedulaContratista',
           valorPdf: payload.cedulaContratista,
@@ -117,7 +138,11 @@ export class InformeGcValidationService {
       }
     }
 
-    if (payload.periodoMes && informe.periodo?.mes && payload.periodoMes !== informe.periodo.mes) {
+    if (
+      payload.periodoMes &&
+      informe.periodo?.mes &&
+      payload.periodoMes !== informe.periodo.mes
+    ) {
       discrepancias.push({
         campo: 'periodoMes',
         valorPdf: String(payload.periodoMes),
@@ -125,7 +150,11 @@ export class InformeGcValidationService {
       });
     }
 
-    if (payload.periodoAnio && informe.periodo?.anio && payload.periodoAnio !== informe.periodo.anio) {
+    if (
+      payload.periodoAnio &&
+      informe.periodo?.anio &&
+      payload.periodoAnio !== informe.periodo.anio
+    ) {
       discrepancias.push({
         campo: 'periodoAnio',
         valorPdf: String(payload.periodoAnio),
@@ -140,7 +169,10 @@ export class InformeGcValidationService {
 
     if (payload.totalHorasAcademicas) {
       const totalHorasPdf = Number(payload.totalHorasAcademicas);
-      const totalHorasBd = actividades.reduce((sum, actividad) => sum + Number(actividad.resultado ? 0 : 0), 0);
+      const totalHorasBd = actividades.reduce(
+        (sum, actividad) => sum + Number(actividad.resultado ? 0 : 0),
+        0,
+      );
       if (Number.isNaN(totalHorasPdf) || totalHorasPdf !== totalHorasBd) {
         discrepancias.push({
           campo: 'totalHorasAcademicas',
@@ -156,7 +188,10 @@ export class InformeGcValidationService {
     };
   }
 
-  private validarNivel3(informe: Informe, payload: ValidarInformeGcDto): { valido: boolean; errores: string[] } {
+  private validarNivel3(
+    informe: Informe,
+    payload: ValidarInformeGcDto,
+  ): { valido: boolean; errores: string[] } {
     const errores: string[] = [];
 
     if (!informe.informeGc?.contrato) {
@@ -165,19 +200,30 @@ export class InformeGcValidationService {
     }
 
     const contrato = informe.informeGc.contrato;
-    const fechaPeriodo = new Date(`${informe.periodo?.anio ?? 2000}-${informe.periodo?.mes ?? 1}-01`);
-    const fechaFinContrato = contrato.fecha_fin ? new Date(contrato.fecha_fin) : null;
+    const fechaPeriodo = new Date(
+      `${informe.periodo?.anio ?? 2000}-${informe.periodo?.mes ?? 1}-01`,
+    );
+    const fechaFinContrato = contrato.fecha_fin
+      ? new Date(contrato.fecha_fin)
+      : null;
 
     if (fechaFinContrato && fechaPeriodo > fechaFinContrato) {
       errores.push('El periodo reportado supera la fecha de fin del contrato');
     }
 
-    if (payload.totalHorasAcademicas && Number(payload.totalHorasAcademicas) <= 0) {
-      errores.push('El total de horas académicas debe ser mayor a 0 cuando existe actividad');
+    if (
+      payload.totalHorasAcademicas &&
+      Number(payload.totalHorasAcademicas) <= 0
+    ) {
+      errores.push(
+        'El total de horas académicas debe ser mayor a 0 cuando existe actividad',
+      );
     }
 
     if (informe.estado === 'rechazado') {
-      errores.push('El informe fue rechazado previamente y requiere observación de devolución antes de reenviar');
+      errores.push(
+        'El informe fue rechazado previamente y requiere observación de devolución antes de reenviar',
+      );
     }
 
     return {

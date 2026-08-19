@@ -15,7 +15,12 @@ import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/user.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('contratos')
 @ApiBearerAuth()
@@ -34,7 +39,10 @@ export class ContratosController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener contratos del usuario actual (Instructores ven sus contratos, Coordinadores ven todos)' })
+  @ApiOperation({
+    summary:
+      'Obtener contratos del usuario actual (Instructores ven sus contratos, Coordinadores ven todos)',
+  })
   @ApiResponse({ status: 200, description: 'Lista de contratos.' })
   findAll(@CurrentUser() user: any) {
     if (user.rol === 'coordinador') {
@@ -46,7 +54,10 @@ export class ContratosController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener detalles de un contrato específico' })
   @ApiResponse({ status: 200, description: 'Datos del contrato.' })
-  @ApiResponse({ status: 403, description: 'Acceso prohibido para este contrato.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso prohibido para este contrato.',
+  })
   @ApiResponse({ status: 404, description: 'Contrato no encontrado.' })
   async findOne(@Param('id') id: string, @CurrentUser() user: any) {
     await this.contratosService.checkOwnership(+id, user.sub, user.rol);
@@ -58,7 +69,10 @@ export class ContratosController {
   @Roles('coordinador')
   @ApiOperation({ summary: 'Actualizar un contrato (Solo Coordinadores)' })
   @ApiResponse({ status: 200, description: 'Contrato actualizado.' })
-  update(@Param('id') id: string, @Body() updateContratoDto: UpdateContratoDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateContratoDto: UpdateContratoDto,
+  ) {
     return this.contratosService.update(+id, updateContratoDto);
   }
 

@@ -45,7 +45,10 @@ export class WebhooksController {
       'Recibir la revisión del PDF de informe realizada por el bot Henry (n8n)',
   })
   @ApiResponse({ status: 200, description: 'Informe actualizado con éxito.' })
-  @ApiResponse({ status: 401, description: 'Clave de webhook inválida o ausente.' })
+  @ApiResponse({
+    status: 401,
+    description: 'Clave de webhook inválida o ausente.',
+  })
   async handleBotReview(@Body() dto: BotHenryWebhookDto) {
     return this.webhooksService.processBotReview(dto);
   }
@@ -58,9 +61,15 @@ export class WebhooksController {
   @ApiOperation({
     summary: 'Enviar un mensaje al Asistente IA de STIMI (requiere JWT)',
   })
-  @ApiResponse({ status: 200, description: 'Respuesta del asistente generada con éxito.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Respuesta del asistente generada con éxito.',
+  })
   @ApiResponse({ status: 401, description: 'Token JWT inválido o ausente.' })
-  @ApiResponse({ status: 500, description: 'Error de conexión con el servicio de IA.' })
+  @ApiResponse({
+    status: 500,
+    description: 'Error de conexión con el servicio de IA.',
+  })
   async chat(@Body() dto: AsistenteChatDto, @Request() req: any) {
     return this.webhooksService.procesarChatAsistente(dto, req.user);
   }
@@ -72,7 +81,8 @@ export class WebhooksController {
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Subir un informe PDF en el chat e iniciar validación vía n8n (requiere JWT)',
+    summary:
+      'Subir un informe PDF en el chat e iniciar validación vía n8n (requiere JWT)',
   })
   @ApiBody({
     schema: {
@@ -96,7 +106,10 @@ export class WebhooksController {
       required: ['archivo', 'tipo_informe', 'periodo'],
     },
   })
-  @ApiResponse({ status: 200, description: 'Informe validado e ingresado con éxito.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Informe validado e ingresado con éxito.',
+  })
   @ApiResponse({ status: 400, description: 'Parámetros inválidos.' })
   @UseInterceptors(FileInterceptor('archivo', multerOptions))
   async uploadChatFile(
@@ -107,7 +120,6 @@ export class WebhooksController {
     return this.webhooksService.procesarSubidaChat(file, dto, req.user);
   }
 
-
   // ── 3. Guardar historial de WhatsApp (n8n → NestJS) ─────────────────────────
   @Post('historial-chat')
   @UseGuards(WebhookKeyGuard)
@@ -117,7 +129,10 @@ export class WebhooksController {
     summary: 'Guardar un mensaje del historial de WhatsApp (llamado desde n8n)',
   })
   @ApiResponse({ status: 200, description: 'Mensaje guardado con éxito.' })
-  @ApiResponse({ status: 401, description: 'Clave de webhook inválida o ausente.' })
+  @ApiResponse({
+    status: 401,
+    description: 'Clave de webhook inválida o ausente.',
+  })
   async guardarHistorial(@Body() dto: GuardarHistorialDto) {
     return this.webhooksService.guardarHistorialWhatsapp(dto);
   }
@@ -127,9 +142,13 @@ export class WebhooksController {
   @UseGuards(JwtGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Obtener el historial de conversación WhatsApp de un instructor por cédula',
+    summary:
+      'Obtener el historial de conversación WhatsApp de un instructor por cédula',
   })
-  @ApiResponse({ status: 200, description: 'Historial obtenido correctamente.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Historial obtenido correctamente.',
+  })
   async getHistorial(@Param('cedula') cedula: string) {
     return this.webhooksService.getHistorialPorCedula(cedula);
   }

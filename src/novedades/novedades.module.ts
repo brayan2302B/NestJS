@@ -7,10 +7,7 @@ import { Version } from '../versiones/entities/version.entity';
 import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Novedad, Version]),
-    NotificacionesModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Novedad, Version]), NotificacionesModule],
   controllers: [NovedadesController],
   providers: [NovedadesService],
   exports: [NovedadesService],

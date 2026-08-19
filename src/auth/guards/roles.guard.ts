@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 @Injectable()
@@ -17,10 +22,14 @@ export class RolesGuard implements CanActivate {
     if (!user || !user.rol) {
       throw new ForbiddenException('Acceso denegado: rol no definido');
     }
-    
-    const hasRole = requiredRoles.some((role) => user.rol.toLowerCase() === role.toLowerCase());
+
+    const hasRole = requiredRoles.some(
+      (role) => user.rol.toLowerCase() === role.toLowerCase(),
+    );
     if (!hasRole) {
-      throw new ForbiddenException('Acceso denegado: no cuenta con los permisos necesarios');
+      throw new ForbiddenException(
+        'Acceso denegado: no cuenta con los permisos necesarios',
+      );
     }
     return true;
   }

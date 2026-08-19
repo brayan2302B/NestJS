@@ -13,7 +13,12 @@ import { CreateActividadDto } from './dto/create-actividade.dto';
 import { UpdateActividadDto } from './dto/update-actividade.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/user.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('actividades')
 @ApiBearerAuth()
@@ -23,14 +28,23 @@ export class ActividadesController {
   constructor(private readonly actividadesService: ActividadesService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear una actividad mensual asociada a un informe GC' })
+  @ApiOperation({
+    summary: 'Crear una actividad mensual asociada a un informe GC',
+  })
   @ApiResponse({ status: 201, description: 'Actividad creada exitosamente.' })
-  @ApiResponse({ status: 403, description: 'Acceso prohibido para este informe.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Acceso prohibido para este informe.',
+  })
   create(
     @Body() createActividadDto: CreateActividadDto,
     @CurrentUser() user: any,
   ) {
-    return this.actividadesService.create(createActividadDto, user.sub, user.rol);
+    return this.actividadesService.create(
+      createActividadDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Get()
@@ -61,7 +75,12 @@ export class ActividadesController {
     @Body() updateActividadDto: UpdateActividadDto,
     @CurrentUser() user: any,
   ) {
-    return this.actividadesService.update(+id, updateActividadDto, user.sub, user.rol);
+    return this.actividadesService.update(
+      +id,
+      updateActividadDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Delete(':id')

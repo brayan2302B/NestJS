@@ -12,7 +12,12 @@ import {
 import { NotificacionesService } from './notificaciones.service';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { CurrentUser } from '../auth/decorators/user.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('notificaciones')
 @ApiBearerAuth()
@@ -22,7 +27,9 @@ export class NotificacionesController {
   constructor(private readonly notificacionesService: NotificacionesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Obtener todas las notificaciones del usuario autenticado' })
+  @ApiOperation({
+    summary: 'Obtener todas las notificaciones del usuario autenticado',
+  })
   @ApiResponse({ status: 200, description: 'Lista de notificaciones.' })
   findMine(@CurrentUser() user: any) {
     return this.notificacionesService.findByUsuario(user.sub);
@@ -47,7 +54,9 @@ export class NotificacionesController {
 
   @Patch(['leer-todas', 'read-all'])
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Marcar todas las notificaciones del usuario como leídas' })
+  @ApiOperation({
+    summary: 'Marcar todas las notificaciones del usuario como leídas',
+  })
   @ApiResponse({ status: 200, description: 'Todas marcadas como leídas.' })
   marcarTodasLeidas(@CurrentUser() user: any) {
     return this.notificacionesService.marcarTodasLeidas(user.sub);

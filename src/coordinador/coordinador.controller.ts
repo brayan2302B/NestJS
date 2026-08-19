@@ -28,9 +28,15 @@ export class CoordinadorController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Chat del asistente IA del coordinador (vía n8n)' })
-  @ApiResponse({ status: 200, description: 'Respuesta del asistente generada.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Respuesta del asistente generada.',
+  })
   @ApiResponse({ status: 401, description: 'Token JWT inválido o ausente.' })
-  @ApiResponse({ status: 500, description: 'Error al conectar con el asistente.' })
+  @ApiResponse({
+    status: 500,
+    description: 'Error al conectar con el asistente.',
+  })
   async chat(@Body() dto: CoordinadorChatDto, @Request() req: any) {
     return this.coordinadorService.chatCoordinador(
       dto.mensaje,

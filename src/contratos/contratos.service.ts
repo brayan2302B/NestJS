@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Contrato } from './entities/contrato.entity';
@@ -17,13 +21,15 @@ export class ContratosService {
       fecha_inicio: createContratoDto.fecha_inicio,
       fecha_fin: createContratoDto.fecha_fin,
       estado: createContratoDto.estado || 'activo',
-      usuario: { id_usuario: createContratoDto.fk_persona } as any,
+      usuario: { id_usuario: createContratoDto.fk_persona },
     });
     return this.contratosRepository.save(contrato);
   }
 
   findAll() {
-    return this.contratosRepository.find({ relations: { usuario: true, obligaciones: true } });
+    return this.contratosRepository.find({
+      relations: { usuario: true, obligaciones: true },
+    });
   }
 
   findByUserId(userId: number) {
@@ -70,7 +76,9 @@ export class ContratosService {
     if (userRol === 'coordinador') return;
     const contrato = await this.findOne(idContrato);
     if (contrato.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para acceder a este contrato');
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a este contrato',
+      );
     }
   }
 }

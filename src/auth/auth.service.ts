@@ -65,7 +65,11 @@ export class AuthService {
     };
   }
 
-  async changePassword(userId: number, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.personasService.findOne(userId);
 
     const matches = await bcrypt.compare(currentPassword, user.contrasena_hash);
@@ -95,14 +99,21 @@ export class AuthService {
     expiry.setHours(expiry.getHours() + 1); // Token valid for 1 hour
 
     // Save token to the user record
-    await this.personasService.saveResetToken(user.id_usuario, resetToken, expiry);
+    await this.personasService.saveResetToken(
+      user.id_usuario,
+      resetToken,
+      expiry,
+    );
 
     // Send the email with the reset token
     try {
       await this.mailService.sendPasswordReset(email, resetToken);
       this.logger.log(`Password reset email sent to ${email}`);
     } catch (error) {
-      this.logger.error(`Error sending password reset email to ${email}`, error.stack);
+      this.logger.error(
+        `Error sending password reset email to ${email}`,
+        error.stack,
+      );
       // Even if email fails, we shouldn't throw error to the user if we don't want to expose internal issues
       // But we can just log it.
     }
@@ -124,17 +135,27 @@ export class AuthService {
     const user = await this.personasService.findByResetToken(token);
 
     if (!user) {
-      throw new BadRequestException('El token de recuperación no es válido o ha expirado');
+      throw new BadRequestException(
+        'El token de recuperación no es válido o ha expirado',
+      );
     }
 
     if (!user.reset_token_expiry || new Date() > user.reset_token_expiry) {
-      throw new BadRequestException('El token de recuperación ha expirado. Solicita uno nuevo.');
+      throw new BadRequestException(
+        'El token de recuperación ha expirado. Solicita uno nuevo.',
+      );
     }
 
     // Update password and clear the token
-    await this.personasService.update(user.id_usuario, { contrasena: newPassword });
+    await this.personasService.update(user.id_usuario, {
+      contrasena: newPassword,
+    });
     await this.personasService.clearResetToken(user.id_usuario);
 
-    return { success: true, message: 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.' };
+    return {
+      success: true,
+      message:
+        'Contraseña restablecida correctamente. Ya puedes iniciar sesión.',
+    };
   }
 }

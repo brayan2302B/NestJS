@@ -1,4 +1,8 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -12,8 +16,12 @@ export class CoordinadorService {
     usuarioId: number,
     telefono?: string,
   ): Promise<{ respuesta: string }> {
-    const webhookUrl = this.configService.get<string>('N8N_WEBHOOK_COORDINADOR');
-    const webhookKey = this.configService.get<string>('N8N_WEBHOOK_COORDINADOR_KEY');
+    const webhookUrl = this.configService.get<string>(
+      'N8N_WEBHOOK_COORDINADOR',
+    );
+    const webhookKey = this.configService.get<string>(
+      'N8N_WEBHOOK_COORDINADOR_KEY',
+    );
 
     if (!webhookUrl) {
       throw new InternalServerErrorException(
@@ -39,7 +47,7 @@ export class CoordinadorService {
           'Content-Type': 'application/json',
           ...(webhookKey && {
             'x-webhook-key': webhookKey,
-            'Authorization': webhookKey,
+            Authorization: webhookKey,
           }),
         },
         body: JSON.stringify(payload),
@@ -58,7 +66,7 @@ export class CoordinadorService {
         );
       }
 
-      const data = (await response.json()) as any;
+      const data = await response.json();
       const respuesta: string =
         data?.mensaje ??
         data?.respuesta ??
@@ -66,12 +74,16 @@ export class CoordinadorService {
         data?.text ??
         'El asistente no pudo generar una respuesta. Intenta de nuevo.';
 
-      this.logger.log(`[ChatCoordinador] Respuesta de n8n recibida para usuarioId=${usuarioId}`);
+      this.logger.log(
+        `[ChatCoordinador] Respuesta de n8n recibida para usuarioId=${usuarioId}`,
+      );
       return { respuesta };
     } catch (error: any) {
       if (error instanceof InternalServerErrorException) throw error;
       if (error.name === 'AbortError') {
-        this.logger.error('[ChatCoordinador] Timeout esperando respuesta de n8n');
+        this.logger.error(
+          '[ChatCoordinador] Timeout esperando respuesta de n8n',
+        );
         throw new InternalServerErrorException(
           'El asistente está tardando demasiado. Intenta de nuevo.',
         );

@@ -12,11 +12,14 @@ export const multerOptions = {
     },
   }),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limite del pdf 
+    fileSize: 50 * 1024 * 1024, // 50MB limite del pdf
   },
   fileFilter: (req, anyFile, callback) => {
     if (anyFile.mimetype !== 'application/pdf') {
-      return callback(new BadRequestException('Solo se permiten archivos PDF'), false);
+      return callback(
+        new BadRequestException('Solo se permiten archivos PDF'),
+        false,
+      );
     }
     callback(null, true);
   },

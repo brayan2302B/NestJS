@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Actividad } from './entities/actividade.entity';
@@ -15,7 +19,11 @@ export class ActividadesService {
     private readonly informeGcRepository: Repository<InformeGc>,
   ) {}
 
-  async create(createActividadDto: CreateActividadDto, userId: number, userRol: string) {
+  async create(
+    createActividadDto: CreateActividadDto,
+    userId: number,
+    userRol: string,
+  ) {
     if (!createActividadDto.fk_gc) {
       throw new NotFoundException('Debe asociar la actividad a un Informe GC');
     }
@@ -26,11 +34,18 @@ export class ActividadesService {
     });
 
     if (!informeGc) {
-      throw new NotFoundException(`InformeGc #${createActividadDto.fk_gc} no encontrado`);
+      throw new NotFoundException(
+        `InformeGc #${createActividadDto.fk_gc} no encontrado`,
+      );
     }
 
-    if (userRol !== 'coordinador' && informeGc.informe?.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para agregar actividades a este informe');
+    if (
+      userRol !== 'coordinador' &&
+      informeGc.informe?.usuario?.id_usuario !== userId
+    ) {
+      throw new ForbiddenException(
+        'No tiene permisos para agregar actividades a este informe',
+      );
     }
 
     const actividad = this.actividadRepository.create({
@@ -46,7 +61,9 @@ export class ActividadesService {
   }
 
   findAll() {
-    return this.actividadRepository.find({ relations: { informeGc: { informe: { usuario: true } } } });
+    return this.actividadRepository.find({
+      relations: { informeGc: { informe: { usuario: true } } },
+    });
   }
 
   findByUserId(userId: number) {
@@ -59,13 +76,22 @@ export class ActividadesService {
   async findOne(id: number) {
     const actividad = await this.actividadRepository.findOne({
       where: { id_actividad: id },
-      relations: { informeGc: { informe: { usuario: true } }, evidencias: true },
+      relations: {
+        informeGc: { informe: { usuario: true } },
+        evidencias: true,
+      },
     });
-    if (!actividad) throw new NotFoundException(`Actividad #${id} no encontrada`);
+    if (!actividad)
+      throw new NotFoundException(`Actividad #${id} no encontrada`);
     return actividad;
   }
 
-  async update(id: number, updateActividadDto: UpdateActividadDto, userId: number, userRol: string) {
+  async update(
+    id: number,
+    updateActividadDto: UpdateActividadDto,
+    userId: number,
+    userRol: string,
+  ) {
     const actividad = await this.findOne(id);
     await this.checkOwnership(id, userId, userRol);
 
@@ -90,10 +116,17 @@ export class ActividadesService {
         relations: { informe: { usuario: true } },
       });
       if (!informeGc) {
-        throw new NotFoundException(`InformeGc #${updateActividadDto.fk_gc} no encontrado`);
+        throw new NotFoundException(
+          `InformeGc #${updateActividadDto.fk_gc} no encontrado`,
+        );
       }
-      if (userRol !== 'coordinador' && informeGc.informe?.usuario?.id_usuario !== userId) {
-        throw new ForbiddenException('No tiene permisos para mover la actividad a este informe');
+      if (
+        userRol !== 'coordinador' &&
+        informeGc.informe?.usuario?.id_usuario !== userId
+      ) {
+        throw new ForbiddenException(
+          'No tiene permisos para mover la actividad a este informe',
+        );
       }
       actividad.informeGc = informeGc;
     }
@@ -111,7 +144,9 @@ export class ActividadesService {
     if (userRol === 'coordinador') return;
     const actividad = await this.findOne(idActividad);
     if (actividad.informeGc?.informe?.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para acceder a esta actividad');
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a esta actividad',
+      );
     }
   }
 }

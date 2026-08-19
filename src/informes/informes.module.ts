@@ -20,7 +20,17 @@ import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Informe, InformeGc, InformeGf, Actividad, Evidencia, Persona, Contrato, PeriodoCarga, Version]),
+    TypeOrmModule.forFeature([
+      Informe,
+      InformeGc,
+      InformeGf,
+      Actividad,
+      Evidencia,
+      Persona,
+      Contrato,
+      PeriodoCarga,
+      Version,
+    ]),
     AuthModule,
     PersonasModule,
     NotificacionesModule,

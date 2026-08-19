@@ -17,7 +17,9 @@ export class N8nService {
     const webhookKey = this.configService.get<string>('N8N_WEBHOOK_KEY');
 
     if (!webhookUrl) {
-      this.logger.warn('N8N_WEBHOOK_PAGINA no está configurado. Se omite la notificación a n8n.');
+      this.logger.warn(
+        'N8N_WEBHOOK_PAGINA no está configurado. Se omite la notificación a n8n.',
+      );
       return;
     }
 
@@ -32,7 +34,10 @@ export class N8nService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(webhookKey && { 'Authorization': webhookKey, 'x-webhook-key': webhookKey }),
+          ...(webhookKey && {
+            Authorization: webhookKey,
+            'x-webhook-key': webhookKey,
+          }),
         },
         body: JSON.stringify(body),
       });

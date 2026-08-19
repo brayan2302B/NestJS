@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -11,7 +16,9 @@ export class WebhookKeyGuard implements CanActivate {
     const expectedKey = this.configService.get<string>('WEBHOOK_HENRY_KEY');
 
     if (!key || key !== expectedKey) {
-      throw new UnauthorizedException('Clave de webhook (x-webhook-key) inválida o ausente');
+      throw new UnauthorizedException(
+        'Clave de webhook (x-webhook-key) inválida o ausente',
+      );
     }
     return true;
   }

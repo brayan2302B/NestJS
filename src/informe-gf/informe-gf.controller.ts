@@ -44,7 +44,12 @@ export class InformeGfController {
     @Body() updateInformeGfDto: UpdateInformeGfDto,
     @CurrentUser() user: any,
   ) {
-    return this.informeGfService.update(+id, updateInformeGfDto, user.sub, user.rol);
+    return this.informeGfService.update(
+      +id,
+      updateInformeGfDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Delete(':id')

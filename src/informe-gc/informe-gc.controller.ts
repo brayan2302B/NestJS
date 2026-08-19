@@ -44,7 +44,12 @@ export class InformeGcController {
     @Body() updateInformeGcDto: UpdateInformeGcDto,
     @CurrentUser() user: any,
   ) {
-    return this.informeGcService.update(+id, updateInformeGcDto, user.sub, user.rol);
+    return this.informeGcService.update(
+      +id,
+      updateInformeGcDto,
+      user.sub,
+      user.rol,
+    );
   }
 
   @Delete(':id')

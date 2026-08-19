@@ -49,17 +49,25 @@ export class WebhooksService {
       );
     }
 
+    // SECURITY: Force status to 'pendiente' regardless of what the bot suggests.
+    // Only a human coordinator can validate/return reports via the UI.
+    // The bot's suggested estado is preserved in the observacion for the coordinator's reference.
+    const observacionConSugerencia = dto.estado?.toLowerCase() !== 'pendiente'
+      ? `[Sugerencia Bot: ${dto.estado}] ${dto.observacion || ''}`
+      : dto.observacion || '';
+
     const result = await this.informesService.cambiarEstadoReporte(
       dto.periodo,
       dto.tipo_informe.toUpperCase(),
-      dto.estado,
-      dto.observacion,
+      'pendiente',
+      observacionConSugerencia,
       usuario.id_usuario,
     );
 
     return {
       success: true,
-      message: 'Informe actualizado correctamente a través del webhook del bot Henry',
+      message:
+        'Informe recibido y marcado como pendiente de revisión por el coordinador',
       data: {
         id_informe: result?.id_informe,
         estado: result?.estado,
@@ -109,19 +117,22 @@ Instrucciones de comportamiento:
     ];
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${openaiKey}`,
+      const response = await fetch(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${openaiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages,
+            max_tokens: 600,
+            temperature: 0.7,
+          }),
         },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages,
-          max_tokens: 600,
-          temperature: 0.7,
-        }),
-      });
+      );
 
       if (!response.ok) {
         const err = await response.text();
@@ -131,7 +142,7 @@ Instrucciones de comportamiento:
         );
       }
 
-      const data = (await response.json()) as any;
+      const data = await response.json();
       const respuesta: string =
         data?.choices?.[0]?.message?.content?.trim() ??
         'No pude generar una respuesta. Por favor, intenta de nuevo.';
@@ -160,7 +171,9 @@ Instrucciones de comportamiento:
     }
 
     const n8nWebhookUrl = this.configService.get<string>('N8N_WEBHOOK_VALIDAR');
-    const n8nWebhookKey = this.configService.get<string>('N8N_WEBHOOK_VALIDAR_KEY');
+    const n8nWebhookKey = this.configService.get<string>(
+      'N8N_WEBHOOK_VALIDAR_KEY',
+    );
 
     if (!n8nWebhookUrl) {
       throw new InternalServerErrorException(
@@ -189,7 +202,7 @@ Instrucciones de comportamiento:
     // Detectar datos desde el nombre del archivo
     if (file && file.originalname) {
       const fileNameUpper = file.originalname.toUpperCase();
-      
+
       if (fileNameUpper.startsWith('GF_')) {
         tipoInforme = 'GF';
       } else if (fileNameUpper.startsWith('GC_')) {
@@ -205,11 +218,11 @@ Instrucciones de comportamiento:
         if (/^\d+$/.test(parts[1])) {
           cedula = parts[1];
         }
-        
+
         // Año y Mes suelen ser los últimos dos elementos
         const possibleAnio = parts[parts.length - 1];
         const possibleMes = parts[parts.length - 2];
-        
+
         if (/^\d{4}$/.test(possibleAnio)) {
           anio = possibleAnio;
           mes = possibleMes;
@@ -223,8 +236,12 @@ Instrucciones de comportamiento:
       const buffer = fs.readFileSync(file.path);
       pdfBase64 = buffer.toString('base64');
     } catch (err: any) {
-      this.logger.error(`[SubidaChat] Error leyendo el PDF temporal: ${err.message}`);
-      throw new InternalServerErrorException('Error al procesar el archivo subido.');
+      this.logger.error(
+        `[SubidaChat] Error leyendo el PDF temporal: ${err.message}`,
+      );
+      throw new InternalServerErrorException(
+        'Error al procesar el archivo subido.',
+      );
     }
 
     // 3. Llamar al webhook de n8n
@@ -232,7 +249,9 @@ Instrucciones de comportamiento:
     let estadoIA: string | undefined;
 
     try {
-      this.logger.log(`[SubidaChat] Enviando informe a n8n para validación: ${file.originalname}`);
+      this.logger.log(
+        `[SubidaChat] Enviando informe a n8n para validación: ${file.originalname}`,
+      );
       const payload = {
         tipo_informe: tipoInforme,
         cedula,
@@ -240,7 +259,7 @@ Instrucciones de comportamiento:
         anio,
         fileName: file.originalname,
         pdfBase64,
-        origen: 'pagina_web'
+        origen: 'pagina_web',
       };
 
       // Timeout manual de 180 segundos (3 minutos) para procesos pesados de IA en n8n
@@ -251,7 +270,10 @@ Instrucciones de comportamiento:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(n8nWebhookKey && { 'x-webhook-key': n8nWebhookKey, 'Authorization': n8nWebhookKey }),
+          ...(n8nWebhookKey && {
+            'x-webhook-key': n8nWebhookKey,
+            Authorization: n8nWebhookKey,
+          }),
         },
         body: JSON.stringify(payload),
         signal: controller.signal,
@@ -261,26 +283,32 @@ Instrucciones de comportamiento:
 
       if (!response.ok) {
         const errText = await response.text().catch(() => '');
-        this.logger.error(`[SubidaChat] Error webhook n8n: ${response.status} - ${errText}`);
+        this.logger.error(
+          `[SubidaChat] Error webhook n8n: ${response.status} - ${errText}`,
+        );
         throw new InternalServerErrorException(
           'Error en el servicio de validación (n8n). Por favor, intenta de nuevo más tarde.',
         );
       }
 
-      const data = (await response.json()) as any;
+      const data = await response.json();
       mensajeIA = data?.mensaje ?? data?.respuesta ?? data?.observacion ?? '';
       estadoIA = data?.estado;
 
       if (!mensajeIA) {
-         mensajeIA = typeof data === 'string' ? data : JSON.stringify(data);
+        mensajeIA = typeof data === 'string' ? data : JSON.stringify(data);
       }
     } catch (error: any) {
       if (error instanceof InternalServerErrorException) throw error;
       if (error.name === 'AbortError') {
-         this.logger.error(`[SubidaChat] Timeout esperando a n8n`);
-         throw new InternalServerErrorException('La validación está tomando demasiado tiempo. Intenta de nuevo.');
+        this.logger.error(`[SubidaChat] Timeout esperando a n8n`);
+        throw new InternalServerErrorException(
+          'La validación está tomando demasiado tiempo. Intenta de nuevo.',
+        );
       }
-      this.logger.error(`[SubidaChat] Error inesperado llamando a n8n: ${error.message}`);
+      this.logger.error(
+        `[SubidaChat] Error inesperado llamando a n8n: ${error.message}`,
+      );
       throw new InternalServerErrorException(
         'No se pudo conectar con el motor de validación. Verifica tu conexión e intenta de nuevo.',
       );
@@ -290,8 +318,14 @@ Instrucciones de comportamiento:
     // 4. Determinar el estado a partir de la respuesta de la IA (si no viene explícito)
     let estadoResultante: 'validado' | 'devuelto' | 'pendiente' = 'pendiente';
 
-    if (estadoIA && ['validado', 'devuelto', 'pendiente'].includes(estadoIA.toLowerCase())) {
-      estadoResultante = estadoIA.toLowerCase() as 'validado' | 'devuelto' | 'pendiente';
+    if (
+      estadoIA &&
+      ['validado', 'devuelto', 'pendiente'].includes(estadoIA.toLowerCase())
+    ) {
+      estadoResultante = estadoIA.toLowerCase() as
+        | 'validado'
+        | 'devuelto'
+        | 'pendiente';
     } else {
       // Fallback a lógica textual en caso de que n8n no devuelva el estado explícitamente
       const textoUpper = mensajeIA.toUpperCase();
@@ -313,39 +347,42 @@ Instrucciones de comportamiento:
       }
     }
 
-    // 6. Guardar el informe en la base de datos solo si el resultado NO es 'devuelto'
-    // (P1: un informe analizado como devuelto no debe registrarse en el sistema)
+    // SECURITY: Always save the report and force status to 'pendiente'.
+    // The IA analysis (estadoResultante + mensajeIA) is preserved as the observacion
+    // so the coordinator can read the IA's recommendation when reviewing.
+    const observacionConSugerenciaIA = estadoResultante !== 'pendiente'
+      ? `[Sugerencia IA: ${estadoResultante}] ${mensajeIA.slice(0, 900)}`
+      : mensajeIA.slice(0, 1000);
+
     let idInforme: number | undefined;
-    if (estadoResultante !== 'devuelto') {
-      try {
-        const informeGuardado = await this.informesService.uploadReport(
-          usuario.id_usuario,
-          file,
+    try {
+      const informeGuardado = await this.informesService.uploadReport(
+        usuario.id_usuario,
+        file,
+        periodo,
+        tipoInforme,
+      );
+
+      if (informeGuardado?.id_informe) {
+        idInforme = informeGuardado.id_informe;
+
+        // Force 'pendiente' — coordinator makes the final call
+        await this.informesService.cambiarEstadoReporte(
           periodo,
           tipoInforme,
-        );
-
-        if (informeGuardado?.id_informe) {
-          idInforme = informeGuardado.id_informe;
-
-          // 7. Actualizar el estado del informe con el resultado de la IA
-          await this.informesService.cambiarEstadoReporte(
-            periodo,
-            tipoInforme,
-            estadoResultante,
-            mensajeIA.slice(0, 1000),
-            usuario.id_usuario,
-          );
-        }
-      } catch (dbErr: any) {
-        this.logger.warn(
-          `[SubidaChat] El informe se analizó pero no se pudo guardar en DB: ${dbErr.message}`,
+          'pendiente',
+          observacionConSugerenciaIA,
+          usuario.id_usuario,
         );
       }
+    } catch (dbErr: any) {
+      this.logger.warn(
+        `[SubidaChat] El informe se analizó pero no se pudo guardar en DB: ${dbErr.message}`,
+      );
     }
 
     this.logger.log(
-      `[SubidaChat] Análisis completado: ${tipoInforme} ${periodo} | Estado: ${estadoResultante} | Usuario: ${cedula}`,
+      `[SubidaChat] Análisis completado: ${tipoInforme} ${periodo} | Sugerencia IA: ${estadoResultante} | Forzado: pendiente | Usuario: ${cedula}`,
     );
 
     // Notificar a n8n el resultado de la validación desde la página web
@@ -353,15 +390,16 @@ Instrucciones de comportamiento:
       cedula,
       periodo,
       tipo_informe: tipoInforme,
-      estado: estadoResultante,
-      observacion: mensajeIA.slice(0, 1000),
+      estado: 'pendiente',
+      sugerencia_ia: estadoResultante,
+      observacion: observacionConSugerenciaIA,
       usuarioId: usuario.id_usuario,
       origen: 'pagina_web',
     });
 
     return {
       respuesta: mensajeIA,
-      estado: estadoResultante,
+      estado: 'pendiente',
       id_informe: idInforme,
     };
   }
@@ -390,7 +428,9 @@ Instrucciones de comportamiento:
   }
 
   // ── 4. Obtener historial de WhatsApp para una cédula ─────────────────────────
-  async getHistorialPorCedula(cedula: string): Promise<HistorialConversacion[]> {
+  async getHistorialPorCedula(
+    cedula: string,
+  ): Promise<HistorialConversacion[]> {
     return this.historialRepository.find({
       where: { cedula },
       order: { creado_en: 'DESC' },

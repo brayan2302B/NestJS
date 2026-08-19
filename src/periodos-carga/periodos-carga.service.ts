@@ -27,7 +27,9 @@ export class PeriodosCargaService {
   }
 
   async findOne(id: number) {
-    const periodo = await this.periodoCargaRepository.findOne({ where: { id_periodo: id } });
+    const periodo = await this.periodoCargaRepository.findOne({
+      where: { id_periodo: id },
+    });
     if (!periodo) {
       throw new NotFoundException(`Periodo #${id} no encontrado`);
     }

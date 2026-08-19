@@ -14,7 +14,12 @@ import { UpdateAreaDto } from './dto/update-area.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 
 @ApiTags('areas')
 @Controller('areas')
@@ -25,14 +30,19 @@ export class AreasController {
   @ApiBearerAuth()
   @UseGuards(JwtGuard, RolesGuard)
   @Roles('coordinador')
-  @ApiOperation({ summary: 'Crear una nueva área de formación (Solo Coordinadores)' })
+  @ApiOperation({
+    summary: 'Crear una nueva área de formación (Solo Coordinadores)',
+  })
   @ApiResponse({ status: 201, description: 'Área creada exitosamente.' })
   create(@Body() createAreaDto: CreateAreaDto) {
     return this.areasService.create(createAreaDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener la lista de todas las áreas de formación (Disponible sin autenticación para registro)' })
+  @ApiOperation({
+    summary:
+      'Obtener la lista de todas las áreas de formación (Disponible sin autenticación para registro)',
+  })
   @ApiResponse({ status: 200, description: 'Lista de áreas.' })
   findAll() {
     return this.areasService.findAll();

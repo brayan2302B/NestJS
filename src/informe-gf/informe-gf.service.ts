@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { InformeGf } from './entities/informe-gf.entity';
@@ -17,13 +21,15 @@ export class InformeGfService {
       version_formato: createInformeGfDto.version_formato,
       valor_total: createInformeGfDto.valor_total,
       observaciones: createInformeGfDto.observaciones,
-      informe: { id_informe: createInformeGfDto.id_informe } as any,
+      informe: { id_informe: createInformeGfDto.id_informe },
     });
     return this.informeGfRepository.save(informe);
   }
 
   findAll() {
-    return this.informeGfRepository.find({ relations: { informe: { usuario: true } } });
+    return this.informeGfRepository.find({
+      relations: { informe: { usuario: true } },
+    });
   }
 
   findByUserId(userId: number) {
@@ -42,7 +48,12 @@ export class InformeGfService {
     return informe;
   }
 
-  async update(id: number, updateInformeGfDto: UpdateInformeGfDto, userId: number, userRol: string) {
+  async update(
+    id: number,
+    updateInformeGfDto: UpdateInformeGfDto,
+    userId: number,
+    userRol: string,
+  ) {
     await this.findOne(id);
     await this.checkOwnership(id, userId, userRol);
 
@@ -50,7 +61,9 @@ export class InformeGfService {
       version_formato: updateInformeGfDto.version_formato,
       valor_total: updateInformeGfDto.valor_total,
       observaciones: updateInformeGfDto.observaciones,
-      informe: updateInformeGfDto.id_informe ? ({ id_informe: updateInformeGfDto.id_informe } as any) : undefined,
+      informe: updateInformeGfDto.id_informe
+        ? { id_informe: updateInformeGfDto.id_informe }
+        : undefined,
     });
     return this.findOne(id);
   }
@@ -65,7 +78,9 @@ export class InformeGfService {
     if (userRol === 'coordinador') return;
     const gf = await this.findOne(idGf);
     if (gf.informe?.usuario?.id_usuario !== userId) {
-      throw new ForbiddenException('No tiene permisos para acceder a este informe GF');
+      throw new ForbiddenException(
+        'No tiene permisos para acceder a este informe GF',
+      );
     }
   }
 }
